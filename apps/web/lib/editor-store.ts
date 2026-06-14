@@ -151,8 +151,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     );
     set({ ...snapshot(), selectedNodeId: node.id });
   },
-  selectNode: (selectedNodeId) => set({ selectedNodeId }),
-  hoverNode: (hoveredNodeId) => set({ hoveredNodeId }),
+  selectNode: (selectedNodeId) =>
+    set((state) => (state.selectedNodeId === selectedNodeId ? state : { selectedNodeId })),
+  hoverNode: (hoveredNodeId) =>
+    set((state) => (state.hoveredNodeId === hoveredNodeId ? state : { hoveredNodeId })),
   updateText: (content) => {
     const nodeId = get().selectedNodeId;
     if (!nodeId) return;

@@ -2,21 +2,30 @@
 
 import { Canvas2DRenderer } from "@geekdesign/renderer-core";
 import { SceneGraph } from "@geekdesign/scene-graph";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useEditorStore } from "../../lib/editor-store";
 
 export function CanvasStage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef<number>();
   const dragRef = useRef<{
     nodeId: string;
     startX: number;
     startY: number;
     x: number;
     y: number;
+    nextX: number;
+    nextY: number;
+  }>();
+  const [dragPreview, setDragPreview] = useState<{
+    nodeId: string;
+    x: number;
+    y: number;
   }>();
   const renderer = useMemo(() => new Canvas2DRenderer(), []);
   const document = useEditorStore((state) => state.document);
+  const sceneGraph = useMemo(() => SceneGraph.fromDocument(document), [document]);
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
   const hoveredNodeId = useEditorStore((state) => state.hoveredNodeId);
   const selectNode = useEditorStore((state) => state.selectNode);
@@ -24,8 +33,17 @@ export function CanvasStage() {
   const moveSelected = useEditorStore((state) => state.moveSelected);
 
   useEffect(() => {
-    if (canvasRef.current) renderer.renderDocument(document, canvasRef.current);
+    if (canvasRef.current && !dragRef.current) {
+      renderer.renderDocument(document, canvasRef.current);
+    }
   }, [document, renderer]);
+
+  useEffect(
+    () => () => {
+      if (frameRef.current !== undefined) cancelAnimationFrame(frameRef.current);
+    },
+    [],
+  );
 
   const pointFromEvent = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -36,10 +54,7 @@ export function CanvasStage() {
   };
 
   const hitNode = (event: React.PointerEvent<HTMLCanvasElement>) =>
-    SceneGraph.fromDocument(document).hitTest(
-      document.pages[0]!.id,
-      pointFromEvent(event),
-    );
+    sceneGraph.hitTest(document.pages[0]!.id, pointFromEvent(event));
 
   const onPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const point = pointFromEvent(event);
@@ -52,22 +67,75 @@ export function CanvasStage() {
         startY: point.y,
         x: node.transform.x,
         y: node.transform.y,
+        nextX: node.transform.x,
+        nextY: node.transform.y,
       };
+      setDragPreview({ nodeId: node.id, x: node.transform.x, y: node.transform.y });
       event.currentTarget.setPointerCapture(event.pointerId);
     }
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const drag = dragRef.current;
+    if (!drag) {
+      hoverNode(hitNode(event)?.id);
+      return;
+    }
+
+    const point = pointFromEvent(event);
+    drag.nextX = Math.round(drag.x + point.x - drag.startX);
+    drag.nextY = Math.round(drag.y + point.y - drag.startY);
+    if (frameRef.current !== undefined) return;
+
+    frameRef.current = requestAnimationFrame(() => {
+      const activeDrag = dragRef.current;
+      const canvas = canvasRef.current;
+      frameRef.current = undefined;
+      if (!activeDrag || !canvas) return;
+
+      const previewDocument = structuredClone(document);
+      const previewNode = previewDocument.nodes[activeDrag.nodeId];
+      if (!previewNode) return;
+      previewNode.transform.x = activeDrag.nextX;
+      previewNode.transform.y = activeDrag.nextY;
+      renderer.renderDocument(previewDocument, canvas);
+      setDragPreview({
+        nodeId: activeDrag.nodeId,
+        x: activeDrag.nextX,
+        y: activeDrag.nextY,
+      });
+    });
   };
 
   const onPointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const drag = dragRef.current;
     if (!drag) return;
-    const point = pointFromEvent(event);
-    const nextX = Math.round(drag.x + point.x - drag.startX);
-    const nextY = Math.round(drag.y + point.y - drag.startY);
-    if (nextX !== drag.x || nextY !== drag.y) moveSelected(nextX, nextY);
+    if (drag.nextX !== drag.x || drag.nextY !== drag.y) {
+      moveSelected(drag.nextX, drag.nextY);
+    }
     dragRef.current = undefined;
+    setDragPreview(undefined);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const onPointerCancel = () => {
+    dragRef.current = undefined;
+    setDragPreview(undefined);
+    if (canvasRef.current) renderer.renderDocument(document, canvasRef.current);
   };
 
   const selected = selectedNodeId ? document.nodes[selectedNodeId] : undefined;
+  const displayedSelected =
+    selected && dragPreview?.nodeId === selected.id
+      ? {
+          ...selected,
+          transform: {
+            ...selected.transform,
+            x: dragPreview.x,
+            y: dragPreview.y,
+          },
+        }
+      : selected;
   const hovered =
     hoveredNodeId && hoveredNodeId !== selectedNodeId
       ? document.nodes[hoveredNodeId]
@@ -84,13 +152,14 @@ export function CanvasStage() {
         className="block cursor-default"
         aria-label="Design canvas"
         onPointerDown={onPointerDown}
-        onPointerMove={(event) => hoverNode(hitNode(event)?.id)}
+        onPointerMove={onPointerMove}
         onPointerLeave={() => hoverNode(undefined)}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
       />
       {hovered ? <NodeOutline node={hovered} color="#a78bfa" /> : null}
-      {selected ? (
-        <NodeOutline node={selected} color="#7c3aed" selected />
+      {displayedSelected ? (
+        <NodeOutline node={displayedSelected} color="#7c3aed" selected />
       ) : null}
     </div>
   );
@@ -109,6 +178,8 @@ function NodeOutline({
     <div
       className="pointer-events-none absolute border-2"
       data-testid={selected ? "selection-box" : undefined}
+      data-x={selected ? node.transform.x : undefined}
+      data-y={selected ? node.transform.y : undefined}
       style={{
         left: node.transform.x,
         top: node.transform.y,

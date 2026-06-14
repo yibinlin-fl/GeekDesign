@@ -36,7 +36,9 @@ React UI event
 `CanvasStage` uses `Canvas2DRenderer` to draw the current document. Pointer hit
 testing uses a temporary read-only Scene Graph built from the current snapshot.
 Clicking selects the topmost selectable node. Dragging dispatches one controlled
-position update when the pointer is released.
+position update when the pointer is released. During the drag, the editor
+renders a transient document preview on animation frames; this preview is not
+published to Zustand, persisted, or added to command history.
 
 Selection and hover outlines are DOM overlays above the canvas. They are view
 state only and are not exported or persisted.
