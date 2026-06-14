@@ -10,5 +10,8 @@
     "lint": "eslint src test --ext .ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@geekdesign/design-schema": "workspace:*"
   }
 }

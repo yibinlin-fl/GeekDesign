@@ -87,7 +87,11 @@ importers:
 
   packages/renderer-core: {}
 
-  packages/scene-graph: {}
+  packages/scene-graph:
+    dependencies:
+      "@geekdesign/design-schema":
+        specifier: workspace:*
+        version: link:../design-schema
 
   packages/shared: {}
 

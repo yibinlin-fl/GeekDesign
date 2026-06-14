@@ -1,1 +1,2 @@
-export const SCENE_GRAPH_PACKAGE = "@geekdesign/scene-graph" as const;
+export * from "./scene-graph";
+export * from "./types";
