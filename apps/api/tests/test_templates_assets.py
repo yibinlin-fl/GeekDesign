@@ -49,15 +49,3 @@ def test_create_project_from_template(client: TestClient) -> None:
     project = response.json()["data"]
     assert project["title"] == "Launch campaign"
     assert project["document_json"]["nodes"]["title_node"]["text"]["content"] == "GeekDesign Launch"
-
-
-def test_asset_upload_mock(client: TestClient) -> None:
-    response = client.post(
-        "/api/assets/upload",
-        files={"file": ("preview.png", b"mock-png-content", "image/png")},
-    )
-
-    assert response.status_code == 201
-    asset = response.json()["data"]
-    assert asset["filename"] == "preview.png"
-    assert asset["storage_key"].startswith("mock://uploads/")

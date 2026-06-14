@@ -4,6 +4,7 @@ import { Canvas2DRenderer } from "@geekdesign/renderer-core";
 import { SceneGraph } from "@geekdesign/scene-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { BrowserImageCache } from "../../lib/browser-image-cache";
 import { useEditorStore } from "../../lib/editor-store";
 
 export function CanvasStage() {
@@ -23,9 +24,21 @@ export function CanvasStage() {
     x: number;
     y: number;
   }>();
-  const renderer = useMemo(() => new Canvas2DRenderer(), []);
+  const [assetVersion, setAssetVersion] = useState(0);
+  const imageCache = useMemo(
+    () =>
+      new BrowserImageCache(() => setAssetVersion((version) => version + 1)),
+    [],
+  );
+  const renderer = useMemo(
+    () => new Canvas2DRenderer({ imageCache }),
+    [imageCache],
+  );
   const document = useEditorStore((state) => state.document);
-  const sceneGraph = useMemo(() => SceneGraph.fromDocument(document), [document]);
+  const sceneGraph = useMemo(
+    () => SceneGraph.fromDocument(document),
+    [document],
+  );
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
   const hoveredNodeId = useEditorStore((state) => state.hoveredNodeId);
   const selectNode = useEditorStore((state) => state.selectNode);
@@ -36,11 +49,12 @@ export function CanvasStage() {
     if (canvasRef.current && !dragRef.current) {
       renderer.renderDocument(document, canvasRef.current);
     }
-  }, [document, renderer]);
+  }, [assetVersion, document, renderer]);
 
   useEffect(
     () => () => {
-      if (frameRef.current !== undefined) cancelAnimationFrame(frameRef.current);
+      if (frameRef.current !== undefined)
+        cancelAnimationFrame(frameRef.current);
     },
     [],
   );
@@ -70,7 +84,11 @@ export function CanvasStage() {
         nextX: node.transform.x,
         nextY: node.transform.y,
       };
-      setDragPreview({ nodeId: node.id, x: node.transform.x, y: node.transform.y });
+      setDragPreview({
+        nodeId: node.id,
+        x: node.transform.x,
+        y: node.transform.y,
+      });
       event.currentTarget.setPointerCapture(event.pointerId);
     }
   };

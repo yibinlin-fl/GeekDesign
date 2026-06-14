@@ -93,6 +93,15 @@ uses FastAPI, SQLAlchemy, Alembic, PostgreSQL, Pydantic, and pytest.
 - Template browser UI with category filters, search, previews, details, variable
   inputs, and editor handoff
 
+### Asset System
+
+- Secure PNG, JPEG, WebP, and SVG upload boundary with size and MIME validation
+- Local uploads adapter with randomized paths and a MinIO-compatible boundary
+- Raster thumbnail generation and SVG sanitization TODO
+- Owned asset list, detail, and delete APIs
+- Editor Asset Panel with upload, image insertion, and selected-image replacement
+- Trusted AssetRef registration through the Command System
+
 ## Current Product Boundaries
 
 The core architecture and backend foundations are established, but the product
@@ -104,7 +113,7 @@ UI is still an MVP rather than a complete Canva-like experience.
   to project APIs.
 - The template page includes a local catalog fallback and is not fully driven
   by backend data.
-- Authentication, asset library, font library, multi-page editing,
+- Authentication, font library, multi-page editing,
   collaboration, payments, and production export workers are not implemented.
 - Loading states, notifications, error surfaces, responsive layouts, keyboard
   shortcuts, and broader visual polish remain limited.
@@ -149,14 +158,14 @@ ruff format . --check
 
 ## Verification State
 
-At the end of the Template System milestone:
+At the end of the Asset System milestone:
 
-- API pytest: 11 passed
+- API pytest: 16 passed
 - API Ruff lint and format checks: passed
 - TypeScript strict typecheck: passed
 - Monorepo lint: passed
 - Monorepo unit tests: passed
-- Playwright editor and template smoke tests: 3 passed
+- Playwright editor, template, and asset smoke tests: 4 passed
 - Alembic migration SQL generation: passed
 
 The Next.js production build was additionally attempted but remained blocked by

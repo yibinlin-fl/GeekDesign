@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 
 import { getSelectedNode, useEditorStore } from "../../lib/editor-store";
+import { AssetPanel } from "./asset-panel";
 import { CanvasStage } from "./canvas-stage";
 
 const buttonClass =
@@ -96,6 +97,7 @@ export function EditorShell() {
               Add image placeholder
             </button>
           </div>
+          <AssetPanel />
           <h2 className="mb-3 mt-7 text-xs font-bold uppercase tracking-widest text-zinc-400">
             Layers
           </h2>

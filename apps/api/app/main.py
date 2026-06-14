@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.design_document import DesignDocumentValidationError
@@ -23,6 +25,14 @@ tags_metadata = [
 ]
 
 app = FastAPI(title=settings.app_name, version="0.1.0", openapi_tags=tags_metadata)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(settings.cors_origins),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.mount("/uploads", StaticFiles(directory=settings.uploads_dir, check_dir=False), name="uploads")
 
 
 @app.exception_handler(DesignDocumentValidationError)

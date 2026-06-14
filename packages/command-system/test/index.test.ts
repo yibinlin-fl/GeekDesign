@@ -1,6 +1,7 @@
 import {
   createEmptyDocument,
   createGroupNode,
+  createImageNode,
   createRectNode,
   createTextNode,
   validateDesignDocument,
@@ -208,6 +209,44 @@ describe("CommandExecutor", () => {
 
     expect(textContent(executor)).toBe("Filled from template");
     expect(executor.getHistory()).toHaveLength(1);
+  });
+
+  it("registers an asset before inserting an image node", () => {
+    executor.execute(
+      createCommand({
+        ...context,
+        source: "user",
+        type: "REGISTER_ASSET",
+        payload: {
+          asset: {
+            id: "asset_upload",
+            type: "image",
+            uri: "/uploads/user/asset.png",
+            mimeType: "image/png",
+          },
+        },
+      }),
+    );
+    executor.execute(
+      createCommand({
+        ...context,
+        source: "user",
+        type: "CREATE_NODE",
+        payload: {
+          parentId: "page_1",
+          node: createImageNode({
+            id: "image_upload",
+            parentId: "page_1",
+            assetId: "asset_upload",
+          }),
+        },
+      }),
+    );
+
+    expect(executor.toDocument().assets.asset_upload?.mimeType).toBe(
+      "image/png",
+    );
+    expect(executor.toDocument().nodes.image_upload?.type).toBe("image");
   });
 
   it("groups and ungroups sibling nodes", () => {

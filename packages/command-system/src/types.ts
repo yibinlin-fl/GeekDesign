@@ -1,4 +1,5 @@
 import type {
+  AssetRef,
   DesignDocument,
   Node,
   NodeId,
@@ -26,6 +27,7 @@ export type CommandType =
   | "ADD_PAGE"
   | "DELETE_PAGE"
   | "SET_BACKGROUND"
+  | "REGISTER_ASSET"
   | "FILL_TEMPLATE_VARIABLES";
 
 export interface CommandPayloadMap {
@@ -48,6 +50,7 @@ export interface CommandPayloadMap {
   ADD_PAGE: { page: Page; index?: number };
   DELETE_PAGE: { pageId: PageId };
   SET_BACKGROUND: { pageId: PageId; background: Paint };
+  REGISTER_ASSET: { asset: AssetRef };
   FILL_TEMPLATE_VARIABLES: { values: Record<string, unknown> };
 }
 

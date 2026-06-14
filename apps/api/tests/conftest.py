@@ -10,6 +10,7 @@ from app.db.base import Base
 from app.db.init_db import seed_templates
 from app.db.session import get_db
 from app.main import app
+from app.modules.assets.storage import LocalAssetStorage, get_asset_storage
 
 
 @pytest.fixture
@@ -31,11 +32,19 @@ def database() -> Generator[Session, None, None]:
 
 
 @pytest.fixture
-def client(database: Session) -> Generator[TestClient, None, None]:
+def asset_storage(tmp_path) -> LocalAssetStorage:
+    return LocalAssetStorage(tmp_path / "uploads")
+
+
+@pytest.fixture
+def client(
+    database: Session, asset_storage: LocalAssetStorage
+) -> Generator[TestClient, None, None]:
     def override_get_db() -> Generator[Session, None, None]:
         yield database
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_asset_storage] = lambda: asset_storage
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

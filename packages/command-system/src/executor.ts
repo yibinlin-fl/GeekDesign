@@ -206,6 +206,16 @@ export class CommandExecutor {
             );
           page.background = clone(command.payload.background);
         });
+      case "REGISTER_ASSET":
+        return this.replaceDocument(graph, (document) => {
+          const asset = command.payload.asset;
+          if (document.assets[asset.id]) {
+            throw new CommandValidationError(
+              `Asset "${asset.id}" already exists`,
+            );
+          }
+          document.assets[asset.id] = clone(asset);
+        });
       case "FILL_TEMPLATE_VARIABLES":
         this.fillTemplateVariables(graph, command.payload.values);
         return graph;

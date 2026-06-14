@@ -16,6 +16,7 @@ const commandTypes = new Set<CommandType>([
   "ADD_PAGE",
   "DELETE_PAGE",
   "SET_BACKGROUND",
+  "REGISTER_ASSET",
   "FILL_TEMPLATE_VARIABLES",
 ]);
 
@@ -145,6 +146,13 @@ export function validateCommand(input: unknown): Command {
     case "FILL_TEMPLATE_VARIABLES":
       if (!isRecord(payload.values))
         throw new CommandValidationError("payload.values must be an object");
+      break;
+    case "REGISTER_ASSET":
+      if (!isRecord(payload.asset))
+        throw new CommandValidationError("payload.asset must be an object");
+      requireString(payload.asset.id, "payload.asset.id");
+      requireString(payload.asset.uri, "payload.asset.uri");
+      requireString(payload.asset.mimeType, "payload.asset.mimeType");
       break;
   }
 

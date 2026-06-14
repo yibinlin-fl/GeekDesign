@@ -59,6 +59,7 @@ selection, drag movement, text editing, font size, solid fill colors,
 undo/redo, local save/load, and PNG export. The AI Assistant panel is a visual
 placeholder; future AI actions must dispatch the same normal commands.
 
-Until the Asset System and upload commands exist, an image placeholder is
-represented by a styled rectangle rather than an `ImageNode` with an untrusted
-or missing asset reference.
+The Asset Panel uploads trusted image types through the API, lists generated
+thumbnails, and inserts real ImageNodes. A `REGISTER_ASSET` command first adds the
+trusted AssetRef to the Design Document; image insertion and replacement then use
+normal node commands so undo and redo remain available.

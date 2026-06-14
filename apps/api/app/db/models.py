@@ -78,6 +78,7 @@ class Asset(TimestampMixin, Base):
     filename: Mapped[str] = mapped_column(String(255))
     mime_type: Mapped[str] = mapped_column(String(255))
     storage_key: Mapped[str] = mapped_column(String(1024))
+    thumbnail_key: Mapped[str] = mapped_column(String(1024))
     size_bytes: Mapped[int] = mapped_column()
 
 

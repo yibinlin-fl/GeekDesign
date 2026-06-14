@@ -8,6 +8,7 @@ import {
 } from "@geekdesign/command-system";
 import {
   createEmptyDocument,
+  createImageNode,
   createRectNode,
   createTextNode,
   validateDesignDocument,
@@ -16,6 +17,8 @@ import {
 } from "@geekdesign/design-schema";
 import { SceneGraph } from "@geekdesign/scene-graph";
 import { create } from "zustand";
+
+import { toAssetRef, type AssetItem } from "./assets";
 
 export const STORAGE_KEY = "geekdesign.editor.document";
 const USER_ID = "local-user";
@@ -47,6 +50,7 @@ interface EditorState {
   addText: () => void;
   addRect: () => void;
   addImagePlaceholder: () => void;
+  insertAsset: (asset: AssetItem, replaceSelected?: boolean) => void;
   selectNode: (nodeId?: string) => void;
   hoverNode: (nodeId?: string) => void;
   updateText: (content: string) => void;
@@ -151,10 +155,66 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     );
     set({ ...snapshot(), selectedNodeId: node.id });
   },
+  insertAsset: (assetItem, replaceSelected = false) => {
+    const asset = toAssetRef(assetItem);
+    const document = executor.toDocument();
+    if (!document.assets[asset.id]) {
+      executor.execute(
+        createCommand({
+          ...commandContext(),
+          source: "user",
+          type: "REGISTER_ASSET",
+          payload: { asset },
+        }),
+      );
+    }
+    const selectedNodeId = get().selectedNodeId;
+    const selected = selectedNodeId
+      ? executor.toDocument().nodes[selectedNodeId]
+      : undefined;
+    if (replaceSelected && selected?.type === "image") {
+      executor.execute(
+        createCommand({
+          ...commandContext(),
+          source: "user",
+          type: "UPDATE_NODE",
+          payload: {
+            nodeId: selected.id,
+            patch: { image: { assetId: asset.id } },
+          },
+        }),
+      );
+      set(snapshot());
+      return;
+    }
+
+    const pageId = document.pages[0]!.id;
+    const node = createImageNode({
+      id: id("image"),
+      parentId: pageId,
+      assetId: asset.id,
+      name: assetItem.filename,
+      alt: assetItem.filename,
+      transform: { x: 240, y: 180, width: 320, height: 240 },
+    });
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "CREATE_NODE",
+        payload: { parentId: pageId, node },
+      }),
+    );
+    set({ ...snapshot(), selectedNodeId: node.id });
+  },
   selectNode: (selectedNodeId) =>
-    set((state) => (state.selectedNodeId === selectedNodeId ? state : { selectedNodeId })),
+    set((state) =>
+      state.selectedNodeId === selectedNodeId ? state : { selectedNodeId },
+    ),
   hoverNode: (hoveredNodeId) =>
-    set((state) => (state.hoveredNodeId === hoveredNodeId ? state : { hoveredNodeId })),
+    set((state) =>
+      state.hoveredNodeId === hoveredNodeId ? state : { hoveredNodeId },
+    ),
   updateText: (content) => {
     const nodeId = get().selectedNodeId;
     if (!nodeId) return;
