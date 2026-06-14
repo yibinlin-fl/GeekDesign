@@ -3,6 +3,9 @@ node_modules/
 .next/
 dist/
 coverage/
+playwright-report/
+test-results/
+blob-report/
 *.tsbuildinfo
 pnpm-debug.log*
 
