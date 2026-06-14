@@ -135,6 +135,7 @@ UI is still an MVP rather than a complete Canva-like experience.
 - `packages/renderer-core`
 - `apps/web`
 - `apps/api`
+- `apps/mcp-server`
 - `docs/architecture.md`
 - `docs/design-schema.md`
 - `docs/scene-graph.md`
@@ -142,6 +143,7 @@ UI is still an MVP rather than a complete Canva-like experience.
 - `docs/renderer.md`
 - `docs/web-editor.md`
 - `docs/api.md`
+- `docs/mcp-tools.md`
 
 ## Development Commands
 
@@ -167,10 +169,12 @@ ruff format . --check
 
 ## Verification State
 
-At the end of the AI Agent Service milestone:
+At the end of the MCP Server milestone:
 
 - Agent Service pytest: 7 passed
-- API pytest: 23 passed
+- API pytest: 24 passed
+- MCP Server tools/resources/prompts implemented with official TypeScript SDK
+- MCP Server Vitest: 7 passed
 - Render Worker pytest: 4 passed
 - API Ruff lint and format checks: passed
 - TypeScript strict typecheck: passed
@@ -190,7 +194,8 @@ current Codex usage limit. No TypeScript files changed in this milestone.
 
 ## Recent Milestone Commits
 
-- `pending feat(ai): add deepseek design agent service`
+- `pending feat(mcp): expose geekdesign tools resources and prompts`
+- `e465c5f feat(ai): add deepseek design agent service`
 - `9d54bc7 feat(templates): add variable based template system`
 - `74fac98 feat(api): add project template asset export endpoints`
 - `367ba7f perf(editor): smooth canvas dragging`

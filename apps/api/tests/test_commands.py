@@ -91,3 +91,40 @@ def test_unknown_node_command_is_rejected(client: TestClient, valid_document: di
     )
 
     assert response.status_code == 400
+
+
+def test_update_node_can_replace_image_data(client: TestClient, valid_document: dict) -> None:
+    document = deepcopy(valid_document)
+    document["pages"][0]["children"] = ["image_1"]
+    document["nodes"]["image_1"] = {
+        "id": "image_1",
+        "type": "image",
+        "parentId": "page_1",
+        "transform": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "rotation": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+        },
+        "style": {"opacity": 1, "visible": True, "locked": False},
+        "image": {"assetId": "asset_before", "fit": "cover"},
+    }
+    project = create_project(client, document)
+
+    response = client.post(
+        f"/api/projects/{project['id']}/commands",
+        json={
+            "id": "command_replace_image",
+            "type": "UPDATE_NODE",
+            "source": "ai",
+            "payload": {
+                "nodeId": "image_1",
+                "patch": {"image": {"assetId": "asset_after", "fit": "contain"}},
+            },
+        },
+    )
+
+    assert response.status_code == 200

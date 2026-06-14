@@ -91,10 +91,12 @@ def execute_command(document: dict[str, Any], command: CommandRequest) -> dict[s
             raise HTTPException(
                 status_code=400, detail="UPDATE_NODE cannot alter node identity or hierarchy"
             )
-        if not set(patch).issubset({"transform", "style", "name", "role"}):
+        if not set(patch).issubset({"transform", "style", "image", "name", "role"}):
             raise HTTPException(
                 status_code=400, detail="UPDATE_NODE patch contains unsupported fields"
             )
+        if "image" in patch and node["type"] != "image":
+            raise HTTPException(status_code=400, detail="Image data can only update an image node")
         _merge(node, patch)
 
     elif command.type == "SET_STYLE":
