@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e1b4b"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <circle cx="660" cy="90" r="150" fill="#a78bfa" opacity=".22"/>
+  <circle cx="120" cy="540" r="210" fill="#38bdf8" opacity=".16"/>
+  <text x="70" y="250" fill="#fff" font-family="Arial" font-size="70" font-weight="700">Design</text>
+  <text x="70" y="330" fill="#fff" font-family="Arial" font-size="70" font-weight="700">Futures</text>
+  <text x="72" y="405" fill="#ddd6fe" font-family="Arial" font-size="25">JUNE 28 · GEEKDESIGN STUDIO</text>
+</svg>

@@ -59,8 +59,10 @@ This is intentionally a basic server-side compatibility guard. The TypeScript
 | POST/GET | `/api/projects` | Create or list projects |
 | GET/PUT | `/api/projects/{id}` | Load or save a project |
 | POST | `/api/projects/{id}/versions` | Save an immutable document version |
+| GET | `/api/template-categories` | List template categories |
 | GET | `/api/templates` | List templates |
 | GET | `/api/templates/{id}` | Load a template |
+| POST | `/api/templates/{id}/create-project` | Fill variables and create a project |
 | POST | `/api/assets/upload` | Validate upload and create mock asset metadata |
 | POST | `/api/exports/png` | Queue a PNG export |
 | POST | `/api/exports/pdf` | Queue a PDF export |
@@ -68,6 +70,11 @@ This is intentionally a basic server-side compatibility guard. The TypeScript
 The upload endpoint currently does not persist file bytes. Its `mock://` storage key
 is the integration point for the future MinIO/S3 asset service. Export endpoints
 create queued tasks for a future render worker.
+
+Template list requests support `category` and `search` query parameters. Creating a
+project from a template deep-copies its Design Document, fills only supported
+variable paths, assigns a new document ID and timestamps, validates the result, and
+then persists the project. The original template JSON is never mutated.
 
 ## Database Migrations
 
