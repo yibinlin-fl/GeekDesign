@@ -1,0 +1,4 @@
+packages:
+  - "apps/web"
+  - "apps/mcp-server"
+  - "packages/*"
