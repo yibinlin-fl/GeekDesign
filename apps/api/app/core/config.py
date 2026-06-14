@@ -15,6 +15,7 @@ class Settings:
     )
     mock_user_id: str = os.getenv("MOCK_USER_ID", "user_local")
     uploads_dir: str = os.getenv("UPLOADS_DIR", str(API_ROOT / "uploads"))
+    exports_dir: str = os.getenv("EXPORTS_DIR", str(API_ROOT / "exports"))
     cors_origins: tuple[str, ...] = tuple(
         origin.strip()
         for origin in os.getenv(

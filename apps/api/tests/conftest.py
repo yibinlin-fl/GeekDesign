@@ -11,6 +11,7 @@ from app.db.init_db import seed_templates
 from app.db.session import get_db
 from app.main import app
 from app.modules.assets.storage import LocalAssetStorage, get_asset_storage
+from app.modules.exports.storage import LocalExportStorage
 
 
 @pytest.fixture
@@ -34,6 +35,11 @@ def database() -> Generator[Session, None, None]:
 @pytest.fixture
 def asset_storage(tmp_path) -> LocalAssetStorage:
     return LocalAssetStorage(tmp_path / "uploads")
+
+
+@pytest.fixture
+def export_storage(tmp_path) -> LocalExportStorage:
+    return LocalExportStorage(tmp_path / "exports")
 
 
 @pytest.fixture

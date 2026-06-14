@@ -1,1 +1,2 @@
 pytest>=7.4,<9.0
+playwright>=1.51,<2.0

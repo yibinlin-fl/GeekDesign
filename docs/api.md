@@ -69,6 +69,7 @@ This is intentionally a basic server-side compatibility guard. The TypeScript
 | DELETE   | `/api/assets/{id}`                   | Delete an owned asset and thumbnail    |
 | POST     | `/api/exports/png`                   | Queue a PNG export                     |
 | POST     | `/api/exports/pdf`                   | Queue a PDF export                     |
+| GET      | `/api/exports/{task_id}`             | Read export status and download URL    |
 
 The asset service accepts PNG, JPEG, WebP, and SVG images up to 10 MB. Raster
 content is decoded to verify the claimed MIME type and generate a WebP thumbnail.
@@ -77,7 +78,9 @@ production use. Local files receive random names under `uploads`; routes depend 
 an asset storage adapter so MinIO/S3 can replace local storage later.
 
 Deleting an asset checks ownership before removing metadata or files. Export
-endpoints create queued tasks for a future render worker.
+requests must reference a project owned by the current user. Completed workers
+persist bytes through the export storage adapter and publish a download URL under
+`/exports`.
 
 Template list requests support `category` and `search` query parameters. Creating a
 project from a template deep-copies its Design Document, fills only supported

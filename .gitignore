@@ -34,3 +34,4 @@ Thumbs.db
 .postgres/
 .redis/
 apps/api/uploads/
+apps/api/exports/

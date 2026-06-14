@@ -39,6 +39,13 @@ Start the API from `apps/api`:
 python -m uvicorn app.main:app --reload
 ```
 
+Install the render worker and Playwright browser:
+
+```bash
+python -m pip install -r apps/render-worker/requirements.txt
+python -m playwright install chromium
+```
+
 ## Quality Checks
 
 ```bash

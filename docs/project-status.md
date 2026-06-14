@@ -80,7 +80,7 @@ uses FastAPI, SQLAlchemy, Alembic, PostgreSQL, Pydantic, and pytest.
   and export tasks
 - Design Document validation before project persistence
 - Project create, list, load, save, and version endpoints
-- Mock asset upload and queued PNG/PDF export endpoints
+- Secure asset upload and owned PNG/PDF export task endpoints
 
 ### Template System
 
@@ -102,6 +102,15 @@ uses FastAPI, SQLAlchemy, Alembic, PostgreSQL, Pydantic, and pytest.
 - Editor Asset Panel with upload, image insertion, and selected-image replacement
 - Trusted AssetRef registration through the Command System
 
+### Export Service
+
+- Owned-project validation for PNG and PDF export tasks
+- Export task status, options, errors, output keys, and download URLs
+- Local exports adapter with a MinIO-compatible boundary
+- Server-only `/render/{project_id}` canvas page
+- Playwright Render Worker for exact-size PDF and future high-resolution PNG
+- Editor PNG download, PDF task creation, status polling, and download link UI
+
 ## Current Product Boundaries
 
 The core architecture and backend foundations are established, but the product
@@ -113,8 +122,8 @@ UI is still an MVP rather than a complete Canva-like experience.
   to project APIs.
 - The template page includes a local catalog fallback and is not fully driven
   by backend data.
-- Authentication, font library, multi-page editing,
-  collaboration, payments, and production export workers are not implemented.
+- Authentication, font library, multi-page editing, collaboration, payments,
+  and production queue orchestration are not implemented.
 - Loading states, notifications, error surfaces, responsive layouts, keyboard
   shortcuts, and broader visual polish remain limited.
 
@@ -158,14 +167,15 @@ ruff format . --check
 
 ## Verification State
 
-At the end of the Asset System milestone:
+At the end of the Export Service milestone:
 
-- API pytest: 16 passed
+- API pytest: 20 passed
+- Render Worker pytest: 4 passed
 - API Ruff lint and format checks: passed
 - TypeScript strict typecheck: passed
 - Monorepo lint: passed
 - Monorepo unit tests: passed
-- Playwright editor, template, and asset smoke tests: 4 passed
+- Playwright editor, template, asset, render, PNG, and PDF smoke tests: 7 passed
 - Alembic migration SQL generation: passed
 
 The Next.js production build was additionally attempted but remained blocked by

@@ -11,6 +11,10 @@ export class BrowserImageCache implements ImageCache {
     return this.images.get(assetId);
   }
 
+  isIdle(): boolean {
+    return this.pending.size === 0;
+  }
+
   load(asset: AssetRef): Promise<CanvasImageSource> {
     const cached = this.images.get(asset.id);
     if (cached) return Promise.resolve(cached);

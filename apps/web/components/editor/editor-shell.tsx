@@ -2,17 +2,17 @@
 
 import type { Node } from "@geekdesign/design-schema";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { getSelectedNode, useEditorStore } from "../../lib/editor-store";
 import { AssetPanel } from "./asset-panel";
 import { CanvasStage } from "./canvas-stage";
+import { ExportControls } from "./export-controls";
 
 const buttonClass =
   "rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40";
 
 export function EditorShell() {
-  const canvasExportRef = useRef<HTMLCanvasElement | null>(null);
   const store = useEditorStore();
   const selected = getSelectedNode(store.document, store.selectedNodeId);
 
@@ -21,18 +21,6 @@ export function EditorShell() {
     // Loading once on mount is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const exportPng = () => {
-    const canvas = document.querySelector<HTMLCanvasElement>(
-      'canvas[aria-label="Design canvas"]',
-    );
-    if (!canvas) return;
-    canvasExportRef.current = canvas;
-    const link = document.createElement("a");
-    link.download = `${store.document.title}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  };
 
   return (
     <main className="flex h-screen min-w-[1100px] flex-col overflow-hidden bg-zinc-100">
@@ -72,12 +60,7 @@ export function EditorShell() {
           <button className={buttonClass} onClick={store.load}>
             Load
           </button>
-          <button
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
-            onClick={exportPng}
-          >
-            Export PNG
-          </button>
+          <ExportControls />
         </div>
       </header>
 

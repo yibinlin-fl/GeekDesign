@@ -33,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.mount("/uploads", StaticFiles(directory=settings.uploads_dir, check_dir=False), name="uploads")
+app.mount("/exports", StaticFiles(directory=settings.exports_dir, check_dir=False), name="exports")
 
 
 @app.exception_handler(DesignDocumentValidationError)

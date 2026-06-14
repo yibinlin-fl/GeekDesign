@@ -87,7 +87,10 @@ class ExportTask(TimestampMixin, Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     owner_id: Mapped[str] = mapped_column(String(64), index=True)
-    project_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True)
     format: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(40), default="queued")
+    options: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    output_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     result_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -7,6 +7,16 @@ body {
   min-height: 100%;
 }
 
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  body {
+    background: white;
+  }
+}
+
 body {
   margin: 0;
   background: #f4f4f5;

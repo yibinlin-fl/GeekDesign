@@ -11,6 +11,7 @@ test("edits through commands, persists locally, and exposes export", async ({
 }) => {
   await expect(page.getByText("GeekDesign")).toBeVisible();
   await expect(page.getByRole("button", { name: "Export PNG" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export PDF" })).toBeVisible();
 
   await page.getByRole("button", { name: "Add text" }).click();
   await expect(page.getByTestId("layers-list")).toContainText("New text");
