@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 API_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DATABASE_URL = f"sqlite:///{(API_ROOT / 'geekdesign.db').as_posix()}"
 
 
 @dataclass(frozen=True)
@@ -12,7 +13,7 @@ class Settings:
     api_prefix: str = "/api"
     database_url: str = os.getenv(
         "DATABASE_URL",
-        "postgresql+psycopg://geekdesign:geekdesign@localhost:5432/geekdesign",
+        DEFAULT_DATABASE_URL,
     )
     jwt_secret: str = os.getenv("JWT_SECRET") or secrets.token_urlsafe(48)
     jwt_expire_minutes: int = int(os.getenv("JWT_EXPIRE_MINUTES", "10080"))

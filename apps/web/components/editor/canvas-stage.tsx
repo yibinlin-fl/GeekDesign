@@ -161,7 +161,7 @@ export function CanvasStage() {
 
   return (
     <div
-      className="relative shrink-0 bg-white shadow-2xl shadow-zinc-950/20"
+      className="relative shrink-0 bg-white shadow-[0_20px_60px_rgba(39,39,42,0.24)] ring-1 ring-zinc-950/10"
       style={{ width: document.canvas.width, height: document.canvas.height }}
       data-testid="canvas-stage"
     >

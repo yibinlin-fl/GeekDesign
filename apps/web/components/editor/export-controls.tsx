@@ -100,10 +100,10 @@ export function ExportControls() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       {message ? (
         <span
-          className="max-w-44 truncate text-xs text-zinc-500"
+          className="max-w-32 truncate text-[10px] text-white/45"
           data-testid="export-status"
         >
           {message}
@@ -111,7 +111,7 @@ export function ExportControls() {
       ) : null}
       {task?.status === "completed" && task.result_url ? (
         <a
-          className="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700"
+          className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white"
           href={`${API_URL}${task.result_url}`}
           download
         >
@@ -119,13 +119,13 @@ export function ExportControls() {
         </a>
       ) : null}
       <button
-        className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 hover:border-violet-300"
+        className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white/75 transition hover:bg-white/15 hover:text-white"
         onClick={exportPng}
       >
         Export PNG
       </button>
       <button
-        className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+        className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-zinc-900 transition hover:bg-violet-50"
         onClick={() => void exportPdf()}
         disabled={task?.status === "queued" || task?.status === "processing"}
       >

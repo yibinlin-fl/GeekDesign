@@ -2,6 +2,7 @@
 node_modules/
 .next/
 .next-e2e/
+.next-visual/
 dist/
 coverage/
 playwright-report/
@@ -35,3 +36,4 @@ Thumbs.db
 .redis/
 apps/api/uploads/
 apps/api/exports/
+apps/api/*.db

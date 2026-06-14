@@ -9,7 +9,7 @@ renderer boundary so editors and AI tools share one controlled editing model.
 - Node.js 18.18+
 - pnpm 9+
 - Python 3.11+
-- Docker with Docker Compose
+- Docker with Docker Compose (optional, for PostgreSQL/Redis/MinIO)
 
 ## Install
 
@@ -21,7 +21,29 @@ python -m pip install -r apps/api/requirements-dev.txt
 
 ## Development
 
-Start infrastructure:
+### Windows, without Docker
+
+Install dependencies once:
+
+```powershell
+corepack enable
+pnpm install
+python -m pip install -r apps/api/requirements-dev.txt
+```
+
+Then launch the API, web app, and browser:
+
+```powershell
+.\scripts\start-windows.ps1
+```
+
+The local API uses `apps/api/geekdesign.db` by default. PostgreSQL, Redis, and
+MinIO remain available for production-like development, but are not required
+to open and use the current editor.
+
+### Docker development
+
+Start optional infrastructure:
 
 ```bash
 docker compose up -d
@@ -36,6 +58,7 @@ pnpm dev
 Start the API from `apps/api`:
 
 ```bash
+python -m app.db.bootstrap
 python -m uvicorn app.main:app --reload
 ```
 

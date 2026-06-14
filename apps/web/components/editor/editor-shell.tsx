@@ -7,12 +7,15 @@ import { useEffect, useRef, useState } from "react";
 
 import { apiFetch, getAccessToken } from "../../lib/auth";
 import { getSelectedNode, useEditorStore } from "../../lib/editor-store";
+import { Icon, type IconName } from "../ui/icon";
 import { AssetPanel } from "./asset-panel";
 import { CanvasStage } from "./canvas-stage";
 import { ExportControls } from "./export-controls";
 
-const buttonClass =
-  "rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40";
+type ToolPanel = "design" | "elements" | "text" | "uploads" | "layers" | "ai";
+
+const smallButton =
+  "grid size-9 place-items-center rounded-xl text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-30";
 
 export function EditorShell() {
   const store = useEditorStore();
@@ -20,6 +23,8 @@ export function EditorShell() {
   const searchParams = useSearchParams();
   const projectId = searchParams.get("projectId");
   const [cloudStatus, setCloudStatus] = useState("Local design");
+  const [activePanel, setActivePanel] = useState<ToolPanel>("elements");
+  const [aiOpen, setAiOpen] = useState(false);
   const loadedProject = useRef<string>();
   const selected = getSelectedNode(store.document, store.selectedNodeId);
 
@@ -44,7 +49,6 @@ export function EditorShell() {
           error instanceof Error ? error.message : "Cloud load failed",
         );
       });
-    // Loading once on mount is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -96,122 +100,362 @@ export function EditorShell() {
   };
 
   return (
-    <main className="flex h-screen min-w-[1100px] flex-col overflow-hidden bg-zinc-100">
-      <header className="flex h-16 items-center gap-3 border-b border-zinc-200 bg-white px-4">
-        <Link
-          href="/"
-          className="mr-3 text-lg font-black tracking-tight text-violet-700"
-        >
-          GeekDesign
+    <main className="flex h-screen min-w-[1180px] flex-col overflow-hidden bg-[#ececf0]">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-zinc-800 bg-[#24232a] px-3 text-white">
+        <Link className="mr-2 flex items-center gap-2" href="/">
+          <span className="brand-gradient grid size-8 place-items-center rounded-lg text-xs font-black">
+            G
+          </span>
+          <span className="text-sm font-black">GeekDesign</span>
         </Link>
-        <button className={buttonClass} onClick={store.newDesign}>
+        <div className="mx-1 h-5 w-px bg-white/15" />
+        <button
+          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
+          onClick={store.newDesign}
+        >
           New design
         </button>
+        <div className="mx-1 h-5 w-px bg-white/15" />
         <button
-          className={buttonClass}
+          className="grid size-8 place-items-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white disabled:opacity-25"
           onClick={store.undo}
           disabled={!store.canUndo}
           aria-label="Undo"
+          title="Undo"
         >
-          Undo
+          <Icon className="size-4" name="undo" />
         </button>
         <button
-          className={buttonClass}
+          className="grid size-8 place-items-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white disabled:opacity-25"
           onClick={store.redo}
           disabled={!store.canRedo}
           aria-label="Redo"
+          title="Redo"
         >
-          Redo
+          <Icon className="size-4" name="redo" />
         </button>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-zinc-400">
+        <div className="ml-3 min-w-0">
+          <p className="max-w-56 truncate text-xs font-bold">
+            {store.document.title}
+          </p>
+          <p className="text-[10px] text-white/40">
             {projectId
               ? cloudStatus
               : store.saved
                 ? "Saved locally"
                 : "Unsaved changes"}
-          </span>
-          <button className={buttonClass} onClick={() => void saveCloud()}>
-            Save to cloud
-          </button>
-          <button className={buttonClass} onClick={store.save}>
+          </p>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white/75 transition hover:bg-white/15 hover:text-white"
+            onClick={store.save}
+          >
             Save
           </button>
-          <button className={buttonClass} onClick={store.load}>
+          <button
+            className="hidden rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white/75 transition hover:bg-white/15 hover:text-white xl:block"
+            onClick={store.load}
+          >
             Load
+          </button>
+          <button
+            className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white/75 transition hover:bg-white/15 hover:text-white"
+            onClick={() => void saveCloud()}
+          >
+            Save to cloud
+          </button>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1.5 text-xs font-bold shadow-lg shadow-violet-950/30"
+            onClick={() => setAiOpen((open) => !open)}
+          >
+            <Icon className="size-3.5" name="ai" />
+            Ask AI
           </button>
           <ExportControls />
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_280px]">
-        <aside className="border-r border-zinc-200 bg-white p-4">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-400">
-            Add
-          </h2>
-          <div className="grid gap-2">
-            <button className={buttonClass} onClick={store.addText}>
-              Add text
-            </button>
-            <button className={buttonClass} onClick={store.addRect}>
-              Add rectangle
-            </button>
-            <button className={buttonClass} onClick={store.addImagePlaceholder}>
-              Add image placeholder
-            </button>
-          </div>
-          <AssetPanel />
-          <h2 className="mb-3 mt-7 text-xs font-bold uppercase tracking-widest text-zinc-400">
-            Layers
-          </h2>
-          <div className="space-y-1" data-testid="layers-list">
-            {[...store.document.pages[0]!.children].reverse().map((nodeId) => {
-              const node = store.document.nodes[nodeId]!;
-              return (
-                <button
-                  key={node.id}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
-                    store.selectedNodeId === node.id
-                      ? "bg-violet-100 text-violet-800"
-                      : "hover:bg-zinc-100"
-                  }`}
-                  onClick={() => store.selectNode(node.id)}
-                >
-                  <span className="text-xs uppercase text-zinc-400">
-                    {node.type}
-                  </span>
-                  <span className="truncate">{layerName(node)}</span>
-                </button>
-              );
-            })}
+      <div className="grid min-h-0 flex-1 grid-cols-[68px_278px_minmax(0,1fr)_294px]">
+        <aside className="flex flex-col items-center border-r border-zinc-800 bg-[#292830] py-3 text-white">
+          <ToolButton
+            icon="grid"
+            label="Design"
+            active={activePanel === "design"}
+            onClick={() => setActivePanel("design")}
+          />
+          <ToolButton
+            icon="elements"
+            label="Elements"
+            active={activePanel === "elements"}
+            onClick={() => setActivePanel("elements")}
+          />
+          <ToolButton
+            icon="text"
+            label="Text"
+            active={activePanel === "text"}
+            onClick={() => setActivePanel("text")}
+          />
+          <ToolButton
+            icon="upload"
+            label="Uploads"
+            active={activePanel === "uploads"}
+            onClick={() => setActivePanel("uploads")}
+          />
+          <ToolButton
+            icon="layers"
+            label="Layers"
+            active={activePanel === "layers"}
+            onClick={() => setActivePanel("layers")}
+          />
+          <ToolButton
+            icon="ai"
+            label="AI"
+            active={activePanel === "ai"}
+            onClick={() => setAiOpen(true)}
+          />
+          <div className="mt-auto">
+            <ToolButton
+              icon="home"
+              label="Projects"
+              onClick={() => router.push("/projects")}
+            />
           </div>
         </aside>
 
-        <section className="overflow-auto bg-[radial-gradient(#d4d4d8_1px,transparent_1px)] bg-[size:20px_20px] p-12">
-          <div className="mx-auto w-fit">
+        <aside className="overflow-y-auto border-r border-zinc-200 bg-white p-4">
+          <PanelContent panel={activePanel} onPanelChange={setActivePanel} />
+        </aside>
+
+        <section className="relative min-w-0 overflow-auto bg-[#ececf0]">
+          <div className="sticky left-0 top-0 z-10 flex h-11 min-w-full items-center justify-center border-b border-zinc-300/70 bg-[#f7f7f9]/90 px-3 backdrop-blur">
+            <div className="flex items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
+              <button
+                className={smallButton}
+                aria-label="Select tool"
+                title="Select tool"
+              >
+                <span className="text-sm">↖</span>
+              </button>
+              <span className="h-5 w-px bg-zinc-200" />
+              <button
+                className={smallButton}
+                onClick={store.addRect}
+                aria-label="Quick rectangle tool"
+                title="Quick rectangle tool"
+              >
+                <span className="size-3.5 rounded-sm border-2 border-current" />
+              </button>
+              <button
+                className={smallButton}
+                onClick={store.addText}
+                aria-label="Quick text tool"
+                title="Quick text tool"
+              >
+                <Icon className="size-4" name="text" />
+              </button>
+              <span className="h-5 w-px bg-zinc-200" />
+              <span className="px-2 text-[11px] font-bold text-zinc-500">
+                Page 1
+              </span>
+            </div>
+          </div>
+          <div className="canvas-grid grid min-h-[calc(100%-44px)] min-w-max place-items-center p-16">
             <CanvasStage />
           </div>
+          {aiOpen ? <AiPanel onClose={() => setAiOpen(false)} /> : null}
         </section>
 
-        <aside className="overflow-y-auto border-l border-zinc-200 bg-white p-5">
-          <Inspector node={selected} />
-          <div className="mt-8 rounded-xl border border-dashed border-violet-300 bg-violet-50 p-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-violet-600">
-              AI Assistant
-            </p>
-            <p className="mt-2 text-sm text-violet-900">
-              AI design commands will appear here in a later milestone.
-            </p>
+        <aside className="overflow-y-auto border-l border-zinc-200 bg-white">
+          <div className="flex h-12 items-center border-b border-zinc-200 px-4">
+            <h2 className="text-sm font-black">Properties</h2>
             <button
-              disabled
-              className="mt-3 w-full rounded-lg bg-violet-200 px-3 py-2 text-sm text-violet-500"
+              className="ml-auto grid size-8 place-items-center rounded-lg text-zinc-400 hover:bg-zinc-100"
+              aria-label="Inspector settings"
             >
-              Ask AI
+              <Icon className="size-4" name="settings" />
             </button>
           </div>
+          <Inspector node={selected} />
         </aside>
       </div>
+
+      <footer className="flex h-7 shrink-0 items-center border-t border-zinc-300 bg-white px-3 text-[10px] font-semibold text-zinc-500">
+        <span>
+          {store.document.canvas.width} x {store.document.canvas.height}px
+        </span>
+        <span className="ml-4">
+          {Object.keys(store.document.nodes).length} elements
+        </span>
+        <span className="ml-auto">100%</span>
+        <span className="mx-3 h-3 w-px bg-zinc-300" />
+        <span>Canvas 2D renderer</span>
+      </footer>
     </main>
+  );
+}
+
+function ToolButton({
+  icon,
+  label,
+  active = false,
+  onClick,
+}: {
+  icon: IconName;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`mb-1 flex w-14 flex-col items-center gap-1 rounded-xl py-2 text-[9px] font-semibold transition ${active ? "bg-violet-500 text-white" : "text-white/45 hover:bg-white/10 hover:text-white"}`}
+      onClick={onClick}
+      aria-label={label}
+    >
+      <Icon className="size-4" name={icon} />
+      {label}
+    </button>
+  );
+}
+
+function PanelContent({
+  panel,
+  onPanelChange,
+}: {
+  panel: ToolPanel;
+  onPanelChange: (panel: ToolPanel) => void;
+}) {
+  const store = useEditorStore();
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-600">
+            Create
+          </p>
+          <h2 className="mt-0.5 text-lg font-black capitalize">{panel}</h2>
+        </div>
+        <button
+          className="grid size-8 place-items-center rounded-lg text-zinc-400 hover:bg-zinc-100"
+          aria-label="Panel menu"
+        >
+          <Icon className="size-4" name="menu" />
+        </button>
+      </div>
+      <div className="relative mt-4">
+        <Icon
+          className="absolute left-3 top-2.5 size-4 text-zinc-400"
+          name="search"
+        />
+        <input
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2 pl-9 pr-3 text-xs outline-none focus:border-violet-300 focus:bg-white"
+          placeholder={`Search ${panel}`}
+        />
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        <AddCard
+          label="Add text"
+          copy="Headline"
+          icon="text"
+          tone="from-violet-500 to-purple-600"
+          onClick={store.addText}
+        />
+        <AddCard
+          label="Add rectangle"
+          copy="Shape"
+          icon="elements"
+          tone="from-fuchsia-500 to-rose-500"
+          onClick={store.addRect}
+        />
+      </div>
+      <button
+        className="mt-2 flex w-full items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-left transition hover:border-violet-200 hover:bg-violet-50"
+        onClick={store.addImagePlaceholder}
+      >
+        <span className="grid size-9 place-items-center rounded-xl bg-zinc-800 text-white">
+          <Icon className="size-4" name="image" />
+        </span>
+        <span>
+          <strong className="block text-xs">Add image placeholder</strong>
+          <span className="text-[10px] text-zinc-400">
+            Prepare a visual frame
+          </span>
+        </span>
+      </button>
+
+      <div className="mt-6 flex items-center justify-between">
+        <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">
+          Layers
+        </h3>
+        <button
+          className="text-[10px] font-bold text-violet-600"
+          onClick={() => onPanelChange("layers")}
+        >
+          View all
+        </button>
+      </div>
+      <div className="mt-2 space-y-1" data-testid="layers-list">
+        {[...store.document.pages[0]!.children].reverse().map((nodeId) => {
+          const node = store.document.nodes[nodeId]!;
+          return (
+            <button
+              key={node.id}
+              className={`flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs transition ${store.selectedNodeId === node.id ? "border-violet-200 bg-violet-50 text-violet-800" : "border-transparent hover:bg-zinc-50"}`}
+              onClick={() => store.selectNode(node.id)}
+            >
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-zinc-100 text-zinc-500">
+                <Icon
+                  className="size-3.5"
+                  name={
+                    node.type === "text"
+                      ? "text"
+                      : node.type === "image"
+                        ? "image"
+                        : "elements"
+                  }
+                />
+              </span>
+              <span className="truncate font-semibold">{layerName(node)}</span>
+              <span className="ml-auto text-[9px] uppercase text-zinc-400">
+                {node.type}
+              </span>
+            </button>
+          );
+        })}
+        {store.document.pages[0]!.children.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-center text-[11px] leading-5 text-zinc-400">
+            Add an element to begin your design.
+          </p>
+        ) : null}
+      </div>
+      <AssetPanel />
+    </>
+  );
+}
+
+function AddCard({
+  label,
+  copy,
+  icon,
+  tone,
+  onClick,
+}: {
+  label: string;
+  copy: string;
+  icon: IconName;
+  tone: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`group rounded-xl bg-gradient-to-br ${tone} p-3 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg`}
+      onClick={onClick}
+    >
+      <Icon className="size-5" name={icon} />
+      <strong className="mt-4 block text-xs">{label}</strong>
+      <span className="text-[10px] text-white/60">{copy}</span>
+    </button>
   );
 }
 
@@ -222,37 +466,59 @@ function Inspector({ node }: { node?: Node }) {
 
   if (!node) {
     return (
-      <p className="text-sm text-zinc-500">
-        Select an element to edit its properties.
-      </p>
+      <div className="p-5 text-center">
+        <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-violet-50 text-violet-500">
+          <Icon className="size-5" name="elements" />
+        </div>
+        <p className="mt-4 text-sm font-bold">Nothing selected</p>
+        <p className="mt-1 text-xs leading-5 text-zinc-400">
+          Select an element on the canvas or in the layers panel to edit it.
+        </p>
+      </div>
     );
   }
   const fillColor =
     node.style.fill?.type === "solid" ? node.style.fill.color : "#7c3aed";
 
   return (
-    <div className="space-y-5">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">
-          Selected
-        </p>
-        <h2 className="mt-1 font-semibold">{layerName(node)}</h2>
-      </div>
+    <div>
+      <InspectorSection title="Selection">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-violet-50 text-violet-600">
+            <Icon
+              className="size-4"
+              name={
+                node.type === "text"
+                  ? "text"
+                  : node.type === "image"
+                    ? "image"
+                    : "elements"
+              }
+            />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold">{layerName(node)}</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-400">
+              {node.type} element
+            </p>
+          </div>
+        </div>
+      </InspectorSection>
       {node.type === "text" ? (
-        <>
-          <label className="block text-sm font-medium">
+        <InspectorSection title="Typography">
+          <label className="block text-[11px] font-bold text-zinc-500">
             Text content
             <textarea
-              className="mt-2 min-h-24 w-full rounded-lg border border-zinc-300 p-3"
+              className="mt-2 min-h-20 w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm font-normal outline-none focus:border-violet-300 focus:bg-white"
               value={node.text.content}
               onChange={(event) => updateText(event.target.value)}
               aria-label="Text content"
             />
           </label>
-          <label className="block text-sm font-medium">
+          <label className="mt-3 block text-[11px] font-bold text-zinc-500">
             Font size
             <input
-              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2"
+              className="mt-2 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-normal outline-none focus:border-violet-300 focus:bg-white"
               type="number"
               min="1"
               value={node.text.fontSize}
@@ -260,29 +526,102 @@ function Inspector({ node }: { node?: Node }) {
               aria-label="Font size"
             />
           </label>
-        </>
+        </InspectorSection>
       ) : null}
-      <label className="block text-sm font-medium">
-        Fill color
-        <input
-          className="mt-2 h-11 w-full rounded-lg border border-zinc-300 p-1"
-          type="color"
-          value={fillColor}
-          onChange={(event) => updateFillColor(event.target.value)}
-          aria-label="Fill color"
-        />
-      </label>
-      <dl className="grid grid-cols-2 gap-2 rounded-lg bg-zinc-100 p-3 text-xs text-zinc-600">
-        <dt>X</dt>
-        <dd>{Math.round(node.transform.x)}</dd>
-        <dt>Y</dt>
-        <dd>{Math.round(node.transform.y)}</dd>
-        <dt>Width</dt>
-        <dd>{Math.round(node.transform.width)}</dd>
-        <dt>Height</dt>
-        <dd>{Math.round(node.transform.height)}</dd>
-      </dl>
+      <InspectorSection title="Appearance">
+        <label className="flex items-center justify-between text-xs font-bold text-zinc-600">
+          Fill color
+          <span className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-1.5 pr-2 text-[10px] font-semibold uppercase text-zinc-500">
+            <input
+              className="size-7 cursor-pointer rounded-lg border-0 bg-transparent p-0"
+              type="color"
+              value={fillColor}
+              onChange={(event) => updateFillColor(event.target.value)}
+              aria-label="Fill color"
+            />
+            {fillColor}
+          </span>
+        </label>
+      </InspectorSection>
+      <InspectorSection title="Position & size">
+        <dl className="grid grid-cols-2 gap-2 text-[10px] font-bold text-zinc-400">
+          {[
+            ["X", node.transform.x],
+            ["Y", node.transform.y],
+            ["W", node.transform.width],
+            ["H", node.transform.height],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2"
+            >
+              <dt>{label}</dt>
+              <dd className="mt-1 text-sm text-zinc-700">
+                {Math.round(Number(value))}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </InspectorSection>
     </div>
+  );
+}
+
+function InspectorSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-b border-zinc-200 p-4">
+      <h3 className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function AiPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <aside className="absolute bottom-4 right-4 z-20 w-80 overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-2xl shadow-violet-950/20">
+      <div className="brand-gradient flex items-center gap-3 p-4 text-white">
+        <span className="grid size-9 place-items-center rounded-xl bg-white/15">
+          <Icon className="size-4" name="ai" />
+        </span>
+        <div>
+          <p className="text-sm font-black">Design Assistant</p>
+          <p className="text-[10px] text-white/65">Command-powered AI</p>
+        </div>
+        <button
+          className="ml-auto rounded-lg px-2 py-1 text-xs font-bold hover:bg-white/10"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+      <div className="p-4">
+        <p className="text-xs leading-5 text-zinc-500">
+          Describe what you want to change. AI tools are connected through the
+          same safe command workflow as editor actions.
+        </p>
+        <div className="mt-4 flex gap-2">
+          <input
+            className="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs outline-none"
+            placeholder="Make the title more playful..."
+            disabled
+          />
+          <button
+            className="rounded-xl bg-violet-600 px-3 text-xs font-bold text-white"
+            disabled
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </aside>
   );
 }
 

@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "GeekDesign",
-  description: "Extensible online visual design platform",
+  title: "GeekDesign - Make every idea visual",
+  description: "An intelligent online visual design workspace.",
 };
 
 export default function RootLayout({
