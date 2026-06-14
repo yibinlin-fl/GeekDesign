@@ -52,6 +52,16 @@ def client(
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_asset_storage] = lambda: asset_storage
     with TestClient(app) as test_client:
+        response = test_client.post(
+            "/api/users/register",
+            json={
+                "email": "owner@example.com",
+                "password": "correct-horse-battery",
+                "display_name": "Project Owner",
+            },
+        )
+        token = response.json()["data"]["access_token"]
+        test_client.headers["Authorization"] = f"Bearer {token}"
         yield test_client
     app.dependency_overrides.clear()
 

@@ -13,7 +13,8 @@ pnpm --filter @geekdesign/mcp-server start
 ```
 
 Set `GEEKDESIGN_API_URL` to override the default API base URL
-`http://127.0.0.1:8000/api`.
+`http://127.0.0.1:8000/api`. Set `GEEKDESIGN_API_TOKEN` to the access token for
+the user whose projects the MCP client may access.
 
 ## Tools
 

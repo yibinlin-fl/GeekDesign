@@ -144,6 +144,7 @@ UI is still an MVP rather than a complete Canva-like experience.
 - `docs/web-editor.md`
 - `docs/api.md`
 - `docs/mcp-tools.md`
+- `docs/user-project-system.md`
 
 ## Development Commands
 
@@ -169,18 +170,19 @@ ruff format . --check
 
 ## Verification State
 
-At the end of the MCP Server milestone:
+At the end of the User / Project System milestone:
 
 - Agent Service pytest: 7 passed
-- API pytest: 24 passed
+- API pytest: 32 passed
 - MCP Server tools/resources/prompts implemented with official TypeScript SDK
 - MCP Server Vitest: 7 passed
+- Real JWT authentication, cloud projects, autosave, history, and read-only sharing implemented
 - Render Worker pytest: 4 passed
 - API Ruff lint and format checks: passed
 - TypeScript strict typecheck: passed
 - Monorepo lint: passed
 - Monorepo unit tests: passed
-- Playwright editor, template, asset, render, PNG, and PDF smoke tests: 7 passed
+- Playwright editor, project, template, asset, render, PNG, and PDF smoke tests: 9 passed
 - Alembic migration SQL generation: passed
 
 The Next.js production build was additionally attempted but remained blocked by
@@ -194,7 +196,8 @@ current Codex usage limit. No TypeScript files changed in this milestone.
 
 ## Recent Milestone Commits
 
-- `pending feat(mcp): expose geekdesign tools resources and prompts`
+- `pending feat(projects): add auth autosave versions and sharing`
+- `4b73e76 feat(mcp): expose geekdesign tools resources and prompts`
 - `e465c5f feat(ai): add deepseek design agent service`
 - `9d54bc7 feat(templates): add variable based template system`
 - `74fac98 feat(api): add project template asset export endpoints`

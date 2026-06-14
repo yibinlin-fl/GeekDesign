@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { STORAGE_KEY } from "../../lib/editor-store";
+import { authHeaders } from "../../lib/auth";
 import {
   fillLocalTemplate,
   templateCatalog,
@@ -58,7 +59,7 @@ export function TemplateBrowser() {
         `${process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"}/api/templates/${selected.id}/create-project`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify({ title: selected.title, variables: values }),
         },
       );
@@ -107,11 +108,16 @@ export function TemplateBrowser() {
       <section>
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <p className="text-sm text-zinc-500">{templates.length} templates</p>
+            <p className="text-sm text-zinc-500">
+              {templates.length} templates
+            </p>
             <h2 className="text-xl font-bold">Start from a polished layout</h2>
           </div>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" data-testid="template-grid">
+        <div
+          className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
+          data-testid="template-grid"
+        >
           {templates.map((template) => (
             <button
               key={template.id}
@@ -170,14 +176,20 @@ export function TemplateBrowser() {
               <h2 className="mt-2 text-3xl font-black">{selected.title}</h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 {selected.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs">
+                  <span
+                    key={tag}
+                    className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs"
+                  >
                     {tag}
                   </span>
                 ))}
               </div>
               <div className="mt-7 space-y-4">
                 {selected.variables.map((variable) => (
-                  <label key={variable.key} className="block text-sm font-semibold">
+                  <label
+                    key={variable.key}
+                    className="block text-sm font-semibold"
+                  >
                     {variable.label}
                     <input
                       className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2.5 font-normal outline-none focus:border-violet-400"

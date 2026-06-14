@@ -26,6 +26,7 @@ class User(TimestampMixin, Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(255))
+    password_hash: Mapped[str] = mapped_column(String(512))
 
 
 class Project(TimestampMixin, Base):
@@ -35,6 +36,9 @@ class Project(TimestampMixin, Base):
     owner_id: Mapped[str] = mapped_column(String(64), index=True)
     title: Mapped[str] = mapped_column(String(255))
     document_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    share_token: Mapped[str | None] = mapped_column(String(128), unique=True, nullable=True)
+    share_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class ProjectVersion(Base):

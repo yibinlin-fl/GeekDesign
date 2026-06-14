@@ -12,6 +12,7 @@ from app.modules.assets.router import router as assets_router
 from app.modules.commands.router import router as commands_router
 from app.modules.exports.router import router as exports_router
 from app.modules.projects.router import router as projects_router
+from app.modules.projects.router import share_router
 from app.modules.templates.router import category_router
 from app.modules.templates.router import router as templates_router
 from app.modules.users.router import router as users_router
@@ -23,7 +24,7 @@ tags_metadata = [
     {"name": "assets", "description": "Uploaded asset metadata."},
     {"name": "exports", "description": "Asynchronous render and export tasks."},
     {"name": "commands", "description": "Validated design mutation commands and scene reads."},
-    {"name": "users", "description": "Authentication APIs reserved for later."},
+    {"name": "users", "description": "Registration, login, and current user APIs."},
 ]
 
 app = FastAPI(title=settings.app_name, version="0.1.0", openapi_tags=tags_metadata)
@@ -78,6 +79,7 @@ def health() -> JSONResponse:
 
 app.include_router(users_router, prefix=settings.api_prefix)
 app.include_router(projects_router, prefix=settings.api_prefix)
+app.include_router(share_router, prefix=settings.api_prefix)
 app.include_router(commands_router, prefix=settings.api_prefix)
 app.include_router(category_router, prefix=settings.api_prefix)
 app.include_router(templates_router, prefix=settings.api_prefix)

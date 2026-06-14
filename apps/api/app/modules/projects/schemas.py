@@ -15,3 +15,15 @@ class ProjectUpdate(BaseModel):
 
 class ProjectVersionCreate(BaseModel):
     document_json: dict[str, Any]
+
+
+class ProjectRename(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+
+
+class AutoSaveRequest(BaseModel):
+    document_json: dict[str, Any]
+
+
+class ShareRequest(BaseModel):
+    enabled: bool = True

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { API_URL } from "../../lib/assets";
+import { authHeaders } from "../../lib/auth";
 import { useEditorStore } from "../../lib/editor-store";
 
 interface ExportTask {
@@ -48,7 +49,7 @@ export function ExportControls() {
     try {
       const projectResponse = await fetch(`${API_URL}/api/projects`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({
           title: document.title,
           document_json: document,
@@ -61,7 +62,7 @@ export function ExportControls() {
       }>;
       const taskResponse = await fetch(`${API_URL}/api/exports/pdf`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ project_id: project.data.id, scale: 1 }),
       });
       if (!taskResponse.ok) throw new Error("Unable to create PDF export");
@@ -77,7 +78,7 @@ export function ExportControls() {
   const startPolling = (taskId: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(() => {
-      void fetch(`${API_URL}/api/exports/${taskId}`)
+      void fetch(`${API_URL}/api/exports/${taskId}`, { headers: authHeaders() })
         .then(async (response) => {
           if (!response.ok) throw new Error("Unable to refresh export task");
           return (await response.json()) as ApiResponse<ExportTask>;

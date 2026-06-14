@@ -4,6 +4,7 @@ import { Canvas2DRenderer } from "@geekdesign/renderer-core";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { API_URL } from "../../lib/assets";
+import { authHeaders } from "../../lib/auth";
 import { BrowserImageCache } from "../../lib/browser-image-cache";
 
 interface ProjectResponse {
@@ -30,7 +31,9 @@ export function ServerRenderCanvas({ projectId }: { projectId: string }) {
   );
 
   useEffect(() => {
-    void fetch(`${API_URL}/api/projects/${projectId}`)
+    void fetch(`${API_URL}/api/projects/${projectId}`, {
+      headers: authHeaders(),
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error("Project not found");
         return (await response.json()) as ProjectResponse;

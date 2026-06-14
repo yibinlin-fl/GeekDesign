@@ -13,13 +13,18 @@ class CommandApiClient:
         self,
         base_url: str = "http://127.0.0.1:8000/api",
         *,
+        access_token: str | None = None,
         client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
+        self.access_token = access_token
         self.client = client or httpx.Client(timeout=20)
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
-        response = self.client.request(method, f"{self.base_url}{path}", **kwargs)
+        headers = kwargs.pop("headers", {})
+        if self.access_token:
+            headers["Authorization"] = f"Bearer {self.access_token}"
+        response = self.client.request(method, f"{self.base_url}{path}", headers=headers, **kwargs)
         if response.is_error:
             try:
                 message = response.json().get("message", response.text)

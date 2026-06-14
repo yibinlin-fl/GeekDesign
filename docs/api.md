@@ -34,9 +34,9 @@ Errors set `success` to `false` and use the appropriate HTTP status code.
 
 ## Authentication Boundary
 
-Routes currently use a mock user dependency from `app/core/auth.py`. Replacing it
-with verified authentication will not require changing project, asset, or export
-route signatures.
+Protected routes require a JWT bearer token issued by `/api/users/register` or
+`/api/users/login`. Passwords are stored as salted scrypt hashes. Project, asset,
+command, and export queries validate the authenticated owner.
 
 ## Design Document Validation
 
@@ -56,9 +56,20 @@ This is intentionally a basic server-side compatibility guard. The TypeScript
 | Method   | Path                                 | Purpose                                |
 | -------- | ------------------------------------ | -------------------------------------- |
 | GET      | `/health`                            | Service health                         |
+| POST     | `/api/users/register`                | Register and issue a JWT               |
+| POST     | `/api/users/login`                   | Login and issue a JWT                  |
+| GET      | `/api/users/me`                      | Read the current user                  |
 | POST/GET | `/api/projects`                      | Create or list projects                |
 | GET/PUT  | `/api/projects/{id}`                 | Load or save a project                 |
+| PATCH    | `/api/projects/{id}/rename`          | Rename an owned project                |
+| POST     | `/api/projects/{id}/duplicate`       | Duplicate an owned project             |
+| DELETE   | `/api/projects/{id}`                 | Soft delete an owned project           |
+| POST     | `/api/projects/{id}/autosave`        | Save and snapshot previous document    |
 | POST     | `/api/projects/{id}/versions`        | Save an immutable document version     |
+| GET      | `/api/projects/{id}/versions`        | List immutable versions                |
+| POST     | `/api/projects/{id}/versions/{vid}/restore` | Restore a version               |
+| POST     | `/api/projects/{id}/share`           | Enable or revoke a read-only link      |
+| GET      | `/api/shares/{token}`                | Read a shared project without editing  |
 | GET      | `/api/template-categories`           | List template categories               |
 | GET      | `/api/templates`                     | List templates                         |
 | GET      | `/api/templates/{id}`                | Load a template                        |

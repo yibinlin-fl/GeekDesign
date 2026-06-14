@@ -61,6 +61,8 @@ interface EditorState {
   redo: () => void;
   save: () => void;
   load: () => void;
+  loadDocument: (document: DesignDocument) => void;
+  markSaved: () => void;
 }
 
 const commandContext = () => ({
@@ -287,6 +289,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       hoveredNodeId: undefined,
     });
   },
+  loadDocument: (document) => {
+    const validated = validateDesignDocument(document);
+    executor = new CommandExecutor({
+      sceneGraph: SceneGraph.fromDocument(validated),
+    });
+    set({
+      ...snapshot(),
+      saved: true,
+      selectedNodeId: undefined,
+      hoveredNodeId: undefined,
+    });
+  },
+  markSaved: () => set({ saved: true }),
 }));
 
 export const getSelectedNode = (

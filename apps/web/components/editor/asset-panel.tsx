@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { API_URL, absoluteAssetUrl, type AssetItem } from "../../lib/assets";
+import { authHeaders } from "../../lib/auth";
 import { useEditorStore } from "../../lib/editor-store";
 
 interface ApiResponse<T> {
@@ -27,7 +28,9 @@ export function AssetPanel() {
 
   const loadAssets = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/assets`);
+      const response = await fetch(`${API_URL}/api/assets`, {
+        headers: authHeaders(),
+      });
       if (!response.ok) throw new Error("Unable to load assets");
       const result = (await response.json()) as ApiResponse<AssetItem[]>;
       setAssets(result.data);
@@ -53,6 +56,7 @@ export function AssetPanel() {
     try {
       const response = await fetch(`${API_URL}/api/assets/upload`, {
         method: "POST",
+        headers: authHeaders(),
         body,
       });
       const result = (await response.json()) as ApiResponse<AssetItem>;

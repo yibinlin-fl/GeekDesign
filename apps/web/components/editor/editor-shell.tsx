@@ -2,8 +2,10 @@
 
 import type { Node } from "@geekdesign/design-schema";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
+import { apiFetch, getAccessToken } from "../../lib/auth";
 import { getSelectedNode, useEditorStore } from "../../lib/editor-store";
 import { AssetPanel } from "./asset-panel";
 import { CanvasStage } from "./canvas-stage";
@@ -14,13 +16,84 @@ const buttonClass =
 
 export function EditorShell() {
   const store = useEditorStore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId");
+  const [cloudStatus, setCloudStatus] = useState("Local design");
+  const loadedProject = useRef<string>();
   const selected = getSelectedNode(store.document, store.selectedNodeId);
 
   useEffect(() => {
-    store.load();
+    if (!projectId) {
+      store.load();
+      return;
+    }
+    if (loadedProject.current === projectId) return;
+    loadedProject.current = projectId;
+    setCloudStatus("Loading cloud project...");
+    void apiFetch<{ document_json: typeof store.document }>(
+      `/projects/${projectId}`,
+    )
+      .then((project) => {
+        store.loadDocument(project.document_json);
+        setCloudStatus("Saved to cloud");
+      })
+      .catch((error: unknown) => {
+        loadedProject.current = undefined;
+        setCloudStatus(
+          error instanceof Error ? error.message : "Cloud load failed",
+        );
+      });
     // Loading once on mount is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (
+      !projectId ||
+      !loadedProject.current ||
+      store.saved ||
+      !getAccessToken()
+    )
+      return;
+    setCloudStatus("Autosaving...");
+    const timeout = window.setTimeout(() => {
+      void apiFetch(`/projects/${projectId}/autosave`, {
+        method: "POST",
+        body: JSON.stringify({ document_json: store.document }),
+      })
+        .then(() => {
+          store.markSaved();
+          setCloudStatus("Saved to cloud");
+        })
+        .catch((error: unknown) =>
+          setCloudStatus(
+            error instanceof Error ? error.message : "Autosave failed",
+          ),
+        );
+    }, 1200);
+    return () => window.clearTimeout(timeout);
+  }, [projectId, store, store.document, store.saved]);
+
+  const saveCloud = async () => {
+    if (projectId) {
+      await apiFetch(`/projects/${projectId}/autosave`, {
+        method: "POST",
+        body: JSON.stringify({ document_json: store.document }),
+      });
+      store.markSaved();
+      setCloudStatus("Saved to cloud");
+      return;
+    }
+    const project = await apiFetch<{ id: string }>("/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title: store.document.title,
+        document_json: store.document,
+      }),
+    });
+    router.replace(`/editor?projectId=${project.id}`);
+  };
 
   return (
     <main className="flex h-screen min-w-[1100px] flex-col overflow-hidden bg-zinc-100">
@@ -52,8 +125,15 @@ export function EditorShell() {
         </button>
         <div className="ml-auto flex items-center gap-2">
           <span className="text-xs text-zinc-400">
-            {store.saved ? "Saved locally" : "Unsaved changes"}
+            {projectId
+              ? cloudStatus
+              : store.saved
+                ? "Saved locally"
+                : "Unsaved changes"}
           </span>
+          <button className={buttonClass} onClick={() => void saveCloud()}>
+            Save to cloud
+          </button>
           <button className={buttonClass} onClick={store.save}>
             Save
           </button>

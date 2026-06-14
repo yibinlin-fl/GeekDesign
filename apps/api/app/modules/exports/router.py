@@ -29,7 +29,11 @@ def export_task_data(task: ExportTask) -> dict:
 
 def require_owned_project(database: Session, project_id: str, user_id: str) -> Project:
     project = database.scalar(
-        select(Project).where(Project.id == project_id, Project.owner_id == user_id)
+        select(Project).where(
+            Project.id == project_id,
+            Project.owner_id == user_id,
+            Project.deleted_at.is_(None),
+        )
     )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")

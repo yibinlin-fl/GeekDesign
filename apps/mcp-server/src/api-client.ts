@@ -37,12 +37,19 @@ export class HttpApiClient implements ApiClient {
   constructor(
     private readonly baseUrl = "http://127.0.0.1:8000/api",
     private readonly request: typeof fetch = fetch,
+    private readonly accessToken = process.env.GEEKDESIGN_API_TOKEN,
   ) {}
 
   private async call(path: string, init?: RequestInit): Promise<unknown> {
     const response = await this.request(`${this.baseUrl}${path}`, {
       ...init,
-      headers: { "content-type": "application/json", ...init?.headers },
+      headers: {
+        "content-type": "application/json",
+        ...(this.accessToken
+          ? { authorization: `Bearer ${this.accessToken}` }
+          : {}),
+        ...init?.headers,
+      },
     });
     const body = (await response.json()) as {
       success?: boolean;
