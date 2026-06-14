@@ -72,7 +72,14 @@ importers:
         specifier: ^3.4.17
         version: 3.4.19(tsx@4.22.4)
 
-  packages/command-system: {}
+  packages/command-system:
+    dependencies:
+      "@geekdesign/design-schema":
+        specifier: workspace:*
+        version: link:../design-schema
+      "@geekdesign/scene-graph":
+        specifier: workspace:*
+        version: link:../scene-graph
 
   packages/design-schema:
     dependencies:
