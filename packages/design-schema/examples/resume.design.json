@@ -1,0 +1,152 @@
+{
+  "schemaVersion": "0.1.0",
+  "documentId": "resume_001",
+  "title": "产品设计师简历",
+  "createdAt": "2026-06-14T00:00:00.000Z",
+  "updatedAt": "2026-06-14T00:00:00.000Z",
+  "canvas": {
+    "width": 794,
+    "height": 1123,
+    "unit": "px",
+    "dpi": 96
+  },
+  "pages": [
+    {
+      "id": "page_resume",
+      "name": "Resume",
+      "background": { "type": "solid", "color": "#ffffff" },
+      "children": ["frame_header", "node_experience"]
+    }
+  ],
+  "nodes": {
+    "frame_header": {
+      "id": "frame_header",
+      "type": "frame",
+      "parentId": "page_resume",
+      "name": "Header",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "width": 794,
+        "height": 260,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "style": {
+        "opacity": 1,
+        "visible": true,
+        "locked": false,
+        "fill": { "type": "solid", "color": "#f4f4f5" }
+      },
+      "children": ["node_name", "node_subtitle"],
+      "clipContent": true
+    },
+    "node_name": {
+      "id": "node_name",
+      "type": "text",
+      "parentId": "frame_header",
+      "role": "title",
+      "transform": {
+        "x": 64,
+        "y": 64,
+        "width": 666,
+        "height": 70,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "style": {
+        "opacity": 1,
+        "visible": true,
+        "locked": false,
+        "fill": { "type": "solid", "color": "#18181b" }
+      },
+      "text": {
+        "content": "Lin Yibin",
+        "fontFamily": "Arial",
+        "fontSize": 48,
+        "fontWeight": 700,
+        "lineHeight": 1.1,
+        "letterSpacing": 0,
+        "textAlign": "left"
+      }
+    },
+    "node_subtitle": {
+      "id": "node_subtitle",
+      "type": "text",
+      "parentId": "frame_header",
+      "role": "subtitle",
+      "transform": {
+        "x": 64,
+        "y": 150,
+        "width": 666,
+        "height": 40,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "style": {
+        "opacity": 1,
+        "visible": true,
+        "locked": false,
+        "fill": { "type": "solid", "color": "#52525b" }
+      },
+      "text": {
+        "content": "Product Designer",
+        "fontFamily": "Arial",
+        "fontSize": 24,
+        "fontWeight": 400,
+        "lineHeight": 1.2,
+        "letterSpacing": 0,
+        "textAlign": "left"
+      }
+    },
+    "node_experience": {
+      "id": "node_experience",
+      "type": "text",
+      "parentId": "page_resume",
+      "role": "experience",
+      "transform": {
+        "x": 64,
+        "y": 330,
+        "width": 666,
+        "height": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "style": {
+        "opacity": 1,
+        "visible": true,
+        "locked": false,
+        "fill": { "type": "solid", "color": "#27272a" }
+      },
+      "text": {
+        "content": "Experience\\nBuilt extensible visual design systems.",
+        "fontFamily": "Arial",
+        "fontSize": 20,
+        "fontWeight": 400,
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
+        "textAlign": "left"
+      }
+    }
+  },
+  "assets": {},
+  "fonts": {},
+  "variables": {
+    "name": {
+      "key": "name",
+      "label": "姓名",
+      "targetNodeId": "node_name",
+      "path": "text.content",
+      "type": "text",
+      "required": true
+    }
+  },
+  "metadata": {
+    "description": "Example resume design",
+    "tags": ["resume"]
+  }
+}

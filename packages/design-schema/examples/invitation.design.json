@@ -1,0 +1,182 @@
+{
+  "schemaVersion": "0.1.0",
+  "documentId": "invitation_001",
+  "title": "AI Agent 分享会邀请函",
+  "createdAt": "2026-06-14T00:00:00.000Z",
+  "updatedAt": "2026-06-14T00:00:00.000Z",
+  "canvas": {
+    "width": 1080,
+    "height": 1920,
+    "unit": "px",
+    "dpi": 96
+  },
+  "pages": [
+    {
+      "id": "page_1",
+      "name": "Invitation",
+      "background": {
+        "type": "linear-gradient",
+        "angle": 135,
+        "stops": [
+          { "offset": 0, "color": "#111827" },
+          { "offset": 1, "color": "#312e81" }
+        ]
+      },
+      "children": ["node_title", "node_date", "node_location", "node_qr"]
+    }
+  ],
+  "nodes": {
+    "node_title": {
+      "id": "node_title",
+      "type": "text",
+      "parentId": "page_1",
+      "role": "title",
+      "name": "主标题",
+      "transform": {
+        "x": 120,
+        "y": 240,
+        "width": 840,
+        "height": 180,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "style": {
+        "opacity": 1,
+        "visible": true,
+        "locked": false,
+        "fill": { "type": "solid", "color": "#ffffff" }
+      },
+      "text": {
+        "content": "AI Agent 实战分享",
+        "fontFamily": "Inter",
+        "fontSize": 72,
+        "fontWeight": 700,
+        "lineHeight": 1.2,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "fontId": "font_inter"
+      }
+    },
+    "node_date": {
+      "id": "node_date",
+      "type": "text",
+      "parentId": "page_1",
+      "role": "date",
+      "transform": {
+        "x": 240,
+        "y": 620,
+        "width": 600,
+        "height": 80,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "style": {
+        "opacity": 1,
+        "visible": true,
+        "locked": false,
+        "fill": { "type": "solid", "color": "#c4b5fd" }
+      },
+      "text": {
+        "content": "2026.06.20 14:00",
+        "fontFamily": "Inter",
+        "fontSize": 36,
+        "fontWeight": 500,
+        "lineHeight": 1.2,
+        "letterSpacing": 1,
+        "textAlign": "center",
+        "fontId": "font_inter"
+      }
+    },
+    "node_location": {
+      "id": "node_location",
+      "type": "text",
+      "parentId": "page_1",
+      "role": "location",
+      "transform": {
+        "x": 240,
+        "y": 720,
+        "width": 600,
+        "height": 80,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "style": {
+        "opacity": 1,
+        "visible": true,
+        "locked": false,
+        "fill": { "type": "solid", "color": "#ffffff" }
+      },
+      "text": {
+        "content": "GeekDesign Innovation Center",
+        "fontFamily": "Inter",
+        "fontSize": 30,
+        "fontWeight": 400,
+        "lineHeight": 1.2,
+        "letterSpacing": 0,
+        "textAlign": "center",
+        "fontId": "font_inter"
+      }
+    },
+    "node_qr": {
+      "id": "node_qr",
+      "type": "image",
+      "parentId": "page_1",
+      "role": "qr_code",
+      "transform": {
+        "x": 390,
+        "y": 1320,
+        "width": 300,
+        "height": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      "style": {
+        "opacity": 1,
+        "visible": true,
+        "locked": false
+      },
+      "image": {
+        "assetId": "asset_qr",
+        "fit": "contain",
+        "alt": "Event registration QR code"
+      }
+    }
+  },
+  "assets": {
+    "asset_qr": {
+      "id": "asset_qr",
+      "type": "image",
+      "uri": "asset://examples/invitation-qr.png",
+      "mimeType": "image/png",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "fonts": {
+    "font_inter": {
+      "id": "font_inter",
+      "family": "Inter",
+      "source": "system",
+      "weight": 400,
+      "style": "normal"
+    }
+  },
+  "variables": {
+    "title": {
+      "key": "title",
+      "label": "活动标题",
+      "targetNodeId": "node_title",
+      "path": "text.content",
+      "type": "text",
+      "required": true
+    }
+  },
+  "metadata": {
+    "description": "Example invitation design",
+    "tags": ["invitation", "event"]
+  }
+}

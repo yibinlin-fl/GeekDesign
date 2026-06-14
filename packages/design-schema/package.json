@@ -10,5 +10,9 @@
     "lint": "eslint src test --ext .ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.24.2",
+    "zod-to-json-schema": "^3.24.5"
   }
 }
