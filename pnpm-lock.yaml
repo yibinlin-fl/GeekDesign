@@ -92,7 +92,11 @@ importers:
 
   packages/editor-core: {}
 
-  packages/renderer-core: {}
+  packages/renderer-core:
+    dependencies:
+      "@geekdesign/design-schema":
+        specifier: workspace:*
+        version: link:../design-schema
 
   packages/scene-graph:
     dependencies:
