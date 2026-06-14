@@ -167,9 +167,10 @@ ruff format . --check
 
 ## Verification State
 
-At the end of the Export Service milestone:
+At the end of the AI Agent Service milestone:
 
-- API pytest: 20 passed
+- Agent Service pytest: 7 passed
+- API pytest: 23 passed
 - Render Worker pytest: 4 passed
 - API Ruff lint and format checks: passed
 - TypeScript strict typecheck: passed
@@ -182,8 +183,14 @@ The Next.js production build was additionally attempted but remained blocked by
 a pre-existing local Next development process holding the build directory. No
 production build error was returned.
 
+For the AI Agent Service milestone, `pnpm lint` and `pnpm test` were requested
+again but could not start because the Windows sandbox denied Node access while
+resolving `C:\Users\asus`; the escalation request was then rejected by the
+current Codex usage limit. No TypeScript files changed in this milestone.
+
 ## Recent Milestone Commits
 
+- `pending feat(ai): add deepseek design agent service`
 - `9d54bc7 feat(templates): add variable based template system`
 - `74fac98 feat(api): add project template asset export endpoints`
 - `367ba7f perf(editor): smooth canvas dragging`

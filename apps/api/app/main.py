@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.design_document import DesignDocumentValidationError
 from app.core.responses import success
 from app.modules.assets.router import router as assets_router
+from app.modules.commands.router import router as commands_router
 from app.modules.exports.router import router as exports_router
 from app.modules.projects.router import router as projects_router
 from app.modules.templates.router import category_router
@@ -21,6 +22,7 @@ tags_metadata = [
     {"name": "templates", "description": "Reusable design templates."},
     {"name": "assets", "description": "Uploaded asset metadata."},
     {"name": "exports", "description": "Asynchronous render and export tasks."},
+    {"name": "commands", "description": "Validated design mutation commands and scene reads."},
     {"name": "users", "description": "Authentication APIs reserved for later."},
 ]
 
@@ -76,6 +78,7 @@ def health() -> JSONResponse:
 
 app.include_router(users_router, prefix=settings.api_prefix)
 app.include_router(projects_router, prefix=settings.api_prefix)
+app.include_router(commands_router, prefix=settings.api_prefix)
 app.include_router(category_router, prefix=settings.api_prefix)
 app.include_router(templates_router, prefix=settings.api_prefix)
 app.include_router(assets_router, prefix=settings.api_prefix)
