@@ -115,3 +115,16 @@ test("resizes, rotates, nudges, duplicates, and deletes a selection", async ({
   await page.getByRole("button", { name: "Zoom in" }).click();
   await expect(fitButton).not.toHaveText(zoomBefore ?? "");
 });
+
+test("adds shapes and edits their appearance", async ({ page }) => {
+  await page.getByRole("button", { name: "Add ellipse" }).click();
+  await expect(page.getByTestId("layers-list")).toContainText("Ellipse");
+  await page.getByLabel("Opacity").fill("60");
+  await page.getByLabel("Stroke").fill("#123456");
+
+  await page.getByRole("button", { name: "Add line" }).click();
+  await expect(page.getByTestId("layers-list")).toContainText("Line");
+
+  await page.getByRole("button", { name: "Add frame" }).click();
+  await expect(page.getByTestId("layers-list")).toContainText("Frame");
+});

@@ -43,3 +43,27 @@ test("inserts an uploaded asset into the canvas", async ({ page }) => {
     page.getByRole("button", { name: "Replace selected" }),
   ).toBeVisible();
 });
+
+test("adds a local image when the API is unavailable", async ({ page }) => {
+  await page.route("http://127.0.0.1:8000/api/assets**", (route) =>
+    route.abort(),
+  );
+  await page.goto("/editor");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "local-image.svg",
+    mimeType: "image/svg+xml",
+    buffer: Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect width="240" height="160" fill="#0ea5e9"/></svg>',
+    ),
+  });
+
+  await expect(page.getByTestId("layers-list")).toContainText(
+    "local-image.svg",
+  );
+  await expect(page.getByLabel("Image fit")).toBeVisible();
+  await page.getByLabel("Image fit").selectOption("contain");
+  await expect(page.getByLabel("Image fit")).toHaveValue("contain");
+});

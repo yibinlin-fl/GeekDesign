@@ -62,13 +62,20 @@ export service can reuse Renderer Core for high-resolution server-side output.
 
 ## Current Scope
 
-The MVP supports blank designs, text, rectangles, image placeholders, layer
-selection, drag movement, resize, rotation, keyboard movement, duplication,
-deletion, precise transform fields, text editing, font size, solid fill colors,
-undo/redo, local save/load, and PNG export. The AI Assistant panel is a visual
-placeholder; future AI actions must dispatch the same normal commands.
+The MVP supports blank designs, text, rectangles, ellipses, lines, frames,
+image placeholders, layer selection, drag movement, resize, rotation, keyboard
+movement, duplication, deletion, precise transform fields, text editing, font
+size, fills, strokes, opacity, shadows, locking, visibility, undo/redo, local
+save/load, and PNG export. The AI Assistant panel is a visual placeholder;
+future AI actions must dispatch the same normal commands.
 
 The Asset Panel uploads trusted image types through the API, lists generated
 thumbnails, and inserts real ImageNodes. A `REGISTER_ASSET` command first adds the
 trusted AssetRef to the Design Document; image insertion and replacement then use
 normal node commands so undo and redo remain available.
+
+When the API is unavailable, the editor validates a selected or dropped local
+image and stores its data URL as a local AssetRef. This allows PNG, JPEG, WebP,
+and SVG images up to 10 MB to render immediately without Docker or a running
+backend. Local images can be replaced and switched between cover, contain, and
+stretch fit modes. Cloud upload remains the preferred persistent asset path.

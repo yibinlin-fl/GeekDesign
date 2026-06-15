@@ -174,12 +174,17 @@ export class Canvas2DRenderer implements Renderer {
       void this.imageCache?.load(asset);
       return;
     }
+    context.save();
+    context.beginPath();
+    context.rect(0, 0, node.transform.width, node.transform.height);
+    context.clip();
     this.drawImageWithFit(
       image,
       node.image.fit,
       node.transform.width,
       node.transform.height,
     );
+    context.restore();
     if (node.style.stroke) {
       this.applyStroke(
         node.style.stroke,

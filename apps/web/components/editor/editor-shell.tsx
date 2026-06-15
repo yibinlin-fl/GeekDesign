@@ -347,6 +347,21 @@ function PanelContent({
         </span>
       </button>
 
+      <div className="mt-5">
+        <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">
+          Shapes & containers
+        </h3>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <ShapeButton
+            label="Add ellipse"
+            symbol="○"
+            onClick={store.addEllipse}
+          />
+          <ShapeButton label="Add line" symbol="╱" onClick={store.addLine} />
+          <ShapeButton label="Add frame" symbol="▣" onClick={store.addFrame} />
+        </div>
+      </div>
+
       <div className="mt-6 flex items-center justify-between">
         <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">
           Layers
@@ -422,10 +437,42 @@ function AddCard({
   );
 }
 
+function ShapeButton({
+  label,
+  symbol,
+  onClick,
+}: {
+  label: string;
+  symbol: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="rounded-xl border border-zinc-200 bg-zinc-50 p-2 text-center transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+      onClick={onClick}
+      aria-label={label}
+    >
+      <span className="block text-2xl leading-7">{symbol}</span>
+      <span className="mt-1 block text-[9px] font-bold">
+        {label.replace("Add ", "")}
+      </span>
+    </button>
+  );
+}
+
 function Inspector({ node }: { node?: Node }) {
   const updateText = useEditorStore((state) => state.updateText);
   const updateFontSize = useEditorStore((state) => state.updateFontSize);
   const updateFillColor = useEditorStore((state) => state.updateFillColor);
+  const updateStroke = useEditorStore((state) => state.updateStroke);
+  const updateOpacity = useEditorStore((state) => state.updateOpacity);
+  const updateCornerRadius = useEditorStore(
+    (state) => state.updateCornerRadius,
+  );
+  const updateImageFit = useEditorStore((state) => state.updateImageFit);
+  const updateShadow = useEditorStore((state) => state.updateShadow);
+  const updateLocked = useEditorStore((state) => state.updateLocked);
+  const updateVisible = useEditorStore((state) => state.updateVisible);
   const updateSelectedTransform = useEditorStore(
     (state) => state.updateSelectedTransform,
   );
@@ -447,6 +494,11 @@ function Inspector({ node }: { node?: Node }) {
   }
   const fillColor =
     node.style.fill?.type === "solid" ? node.style.fill.color : "#7c3aed";
+  const strokeColor =
+    node.style.stroke?.paint.type === "solid"
+      ? node.style.stroke.paint.color
+      : "#27272a";
+  const strokeWidth = node.style.stroke?.width ?? 0;
 
   return (
     <div>
@@ -497,19 +549,88 @@ function Inspector({ node }: { node?: Node }) {
         </InspectorSection>
       ) : null}
       <InspectorSection title="Appearance">
-        <label className="flex items-center justify-between text-xs font-bold text-zinc-600">
-          Fill color
-          <span className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-1.5 pr-2 text-[10px] font-semibold uppercase text-zinc-500">
-            <input
-              className="size-7 cursor-pointer rounded-lg border-0 bg-transparent p-0"
-              type="color"
-              value={fillColor}
-              onChange={(event) => updateFillColor(event.target.value)}
-              aria-label="Fill color"
-            />
-            {fillColor}
-          </span>
+        {node.type !== "line" && node.type !== "image" ? (
+          <ColorField
+            label="Fill color"
+            value={fillColor}
+            onChange={updateFillColor}
+          />
+        ) : null}
+        <div className="mt-3 grid grid-cols-[1fr_86px] gap-2">
+          <ColorField
+            label="Stroke"
+            value={strokeColor}
+            onChange={(color) => updateStroke(color, Math.max(1, strokeWidth))}
+          />
+          <TransformField
+            label="Width"
+            value={strokeWidth}
+            min={0}
+            onChange={(width) => updateStroke(strokeColor, width)}
+          />
+        </div>
+        <label className="mt-4 block text-[11px] font-bold text-zinc-500">
+          Opacity {Math.round(node.style.opacity * 100)}%
+          <input
+            className="mt-2 w-full accent-violet-600"
+            type="range"
+            min="5"
+            max="100"
+            value={Math.round(node.style.opacity * 100)}
+            onChange={(event) =>
+              updateOpacity(Number(event.target.value) / 100)
+            }
+            aria-label="Opacity"
+          />
         </label>
+        {node.type === "rect" ? (
+          <div className="mt-3">
+            <TransformField
+              label="Corner radius"
+              value={node.cornerRadius}
+              min={0}
+              onChange={updateCornerRadius}
+            />
+          </div>
+        ) : null}
+        {node.type === "image" ? (
+          <label className="mt-3 block text-[11px] font-bold text-zinc-500">
+            Image fit
+            <select
+              className="mt-2 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700 outline-none"
+              value={node.image.fit}
+              onChange={(event) =>
+                updateImageFit(
+                  event.target.value as "cover" | "contain" | "stretch",
+                )
+              }
+              aria-label="Image fit"
+            >
+              <option value="cover">Cover</option>
+              <option value="contain">Contain</option>
+              <option value="stretch">Stretch</option>
+            </select>
+          </label>
+        ) : null}
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <StateToggle
+            label="Shadow"
+            active={Boolean(node.style.shadow && node.style.shadow.blur > 0)}
+            onClick={() =>
+              updateShadow(!(node.style.shadow && node.style.shadow.blur > 0))
+            }
+          />
+          <StateToggle
+            label="Locked"
+            active={node.style.locked}
+            onClick={() => updateLocked(!node.style.locked)}
+          />
+          <StateToggle
+            label="Visible"
+            active={node.style.visible}
+            onClick={() => updateVisible(!node.style.visible)}
+          />
+        </div>
       </InspectorSection>
       <InspectorSection title="Position & size">
         <div className="grid grid-cols-2 gap-2">
@@ -561,6 +682,55 @@ function Inspector({ node }: { node?: Node }) {
         </div>
       </InspectorSection>
     </div>
+  );
+}
+
+function StateToggle({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`rounded-xl border px-2 py-2 text-[10px] font-bold transition ${
+        active
+          ? "border-violet-300 bg-violet-50 text-violet-700"
+          : "border-zinc-200 bg-zinc-50 text-zinc-400"
+      }`}
+      onClick={onClick}
+      aria-pressed={active}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between text-xs font-bold text-zinc-600">
+      {label}
+      <span className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-1.5 pr-2 text-[10px] font-semibold uppercase text-zinc-500">
+        <input
+          className="size-7 cursor-pointer rounded-lg border-0 bg-transparent p-0"
+          type="color"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          aria-label={label}
+        />
+      </span>
+    </label>
   );
 }
 

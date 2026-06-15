@@ -8,7 +8,10 @@ import {
 } from "@geekdesign/command-system";
 import {
   createEmptyDocument,
+  createEllipseNode,
+  createFrameNode,
   createImageNode,
+  createLineNode,
   createRectNode,
   createTextNode,
   validateDesignDocument,
@@ -50,6 +53,9 @@ interface EditorState {
   newDesign: () => void;
   addText: () => void;
   addRect: () => void;
+  addEllipse: () => void;
+  addLine: () => void;
+  addFrame: () => void;
   addImagePlaceholder: () => void;
   insertAsset: (asset: AssetItem, replaceSelected?: boolean) => void;
   selectNode: (nodeId?: string) => void;
@@ -57,6 +63,13 @@ interface EditorState {
   updateText: (content: string) => void;
   updateFontSize: (fontSize: number) => void;
   updateFillColor: (color: string) => void;
+  updateStroke: (color: string, width: number) => void;
+  updateOpacity: (opacity: number) => void;
+  updateCornerRadius: (cornerRadius: number) => void;
+  updateImageFit: (fit: "cover" | "contain" | "stretch") => void;
+  updateShadow: (enabled: boolean) => void;
+  updateLocked: (locked: boolean) => void;
+  updateVisible: (visible: boolean) => void;
   moveSelected: (x: number, y: number) => void;
   updateSelectedTransform: (transform: Partial<Node["transform"]>) => void;
   deleteSelected: () => void;
@@ -131,6 +144,54 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         payload: { parentId: pageId, node },
       }),
     );
+    set({ ...snapshot(), selectedNodeId: node.id });
+  },
+  addEllipse: () => {
+    const document = executor.toDocument();
+    const pageId = document.pages[0]!.id;
+    const node = createEllipseNode({
+      id: id("ellipse"),
+      parentId: pageId,
+      name: "Ellipse",
+      transform: { x: 210, y: 170, width: 180, height: 180 },
+      style: { fill: { type: "solid", color: "#f43f5e" } },
+    });
+    executeCreateNode(pageId, node);
+    set({ ...snapshot(), selectedNodeId: node.id });
+  },
+  addLine: () => {
+    const document = executor.toDocument();
+    const pageId = document.pages[0]!.id;
+    const node = createLineNode({
+      id: id("line"),
+      parentId: pageId,
+      name: "Line",
+      transform: { x: 180, y: 260, width: 260, height: 12 },
+      style: {
+        stroke: {
+          paint: { type: "solid", color: "#27272a" },
+          width: 4,
+          lineCap: "round",
+        },
+      },
+    });
+    node.line.x2 = 260;
+    executeCreateNode(pageId, node);
+    set({ ...snapshot(), selectedNodeId: node.id });
+  },
+  addFrame: () => {
+    const document = executor.toDocument();
+    const pageId = document.pages[0]!.id;
+    const node = createFrameNode({
+      id: id("frame"),
+      parentId: pageId,
+      name: "Frame",
+      transform: { x: 160, y: 120, width: 360, height: 280 },
+      style: {
+        stroke: { paint: { type: "solid", color: "#a1a1aa" }, width: 2 },
+      },
+    });
+    executeCreateNode(pageId, node, 0);
     set({ ...snapshot(), selectedNodeId: node.id });
   },
   addImagePlaceholder: () => {
@@ -253,6 +314,107 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     );
     set(snapshot());
   },
+  updateStroke: (color, width) => {
+    const nodeId = get().selectedNodeId;
+    if (!nodeId || !Number.isFinite(width) || width < 0) return;
+    executor.execute(
+      setStyleCommand(commandContext(), {
+        nodeId,
+        style: {
+          stroke: {
+            paint: { type: "solid", color },
+            width,
+            lineCap: "round",
+            lineJoin: "round",
+          },
+        },
+      }),
+    );
+    set(snapshot());
+  },
+  updateOpacity: (opacity) => {
+    const nodeId = get().selectedNodeId;
+    if (!nodeId || !Number.isFinite(opacity)) return;
+    executor.execute(
+      setStyleCommand(commandContext(), {
+        nodeId,
+        style: { opacity: Math.min(1, Math.max(0.05, opacity)) },
+      }),
+    );
+    set(snapshot());
+  },
+  updateCornerRadius: (cornerRadius) => {
+    const nodeId = get().selectedNodeId;
+    const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
+    if (!nodeId || node?.type !== "rect" || !Number.isFinite(cornerRadius))
+      return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_NODE",
+        payload: { nodeId, patch: { cornerRadius: Math.max(0, cornerRadius) } },
+      }),
+    );
+    set(snapshot());
+  },
+  updateImageFit: (fit) => {
+    const nodeId = get().selectedNodeId;
+    const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
+    if (!nodeId || node?.type !== "image") return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_NODE",
+        payload: { nodeId, patch: { image: { fit } } },
+      }),
+    );
+    set(snapshot());
+  },
+  updateShadow: (enabled) => {
+    const nodeId = get().selectedNodeId;
+    if (!nodeId) return;
+    executor.execute(
+      setStyleCommand(commandContext(), {
+        nodeId,
+        style: {
+          shadow: enabled
+            ? {
+                color: "#18181b40",
+                offsetX: 0,
+                offsetY: 10,
+                blur: 24,
+                spread: 0,
+              }
+            : {
+                color: "#00000000",
+                offsetX: 0,
+                offsetY: 0,
+                blur: 0,
+                spread: 0,
+              },
+        },
+      }),
+    );
+    set(snapshot());
+  },
+  updateLocked: (locked) => {
+    const nodeId = get().selectedNodeId;
+    if (!nodeId) return;
+    executor.execute(
+      setStyleCommand(commandContext(), { nodeId, style: { locked } }),
+    );
+    set(snapshot());
+  },
+  updateVisible: (visible) => {
+    const nodeId = get().selectedNodeId;
+    if (!nodeId) return;
+    executor.execute(
+      setStyleCommand(commandContext(), { nodeId, style: { visible } }),
+    );
+    set(snapshot());
+  },
   moveSelected: (x, y) => {
     const nodeId = get().selectedNodeId;
     if (!nodeId) return;
@@ -363,6 +525,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   markSaved: () => set({ saved: true }),
 }));
+
+function executeCreateNode(parentId: string, node: Node, index?: number): void {
+  executor.execute(
+    createCommand({
+      ...commandContext(),
+      source: "user",
+      type: "CREATE_NODE",
+      payload: { parentId, node, ...(index === undefined ? {} : { index }) },
+    }),
+  );
+}
 
 export const getSelectedNode = (
   document: DesignDocument,

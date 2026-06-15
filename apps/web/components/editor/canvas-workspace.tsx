@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { localAssetFromFile } from "../../lib/assets";
 import { useEditorStore } from "../../lib/editor-store";
 import { CanvasStage } from "./canvas-stage";
 
@@ -9,9 +10,11 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ x: number; y: number; left: number; top: number }>();
   const [spacePressed, setSpacePressed] = useState(false);
+  const [draggingFile, setDraggingFile] = useState(false);
   const document = useEditorStore((state) => state.document);
   const zoom = useEditorStore((state) => state.zoom);
   const setZoom = useEditorStore((state) => state.setZoom);
+  const insertAsset = useEditorStore((state) => state.insertAsset);
 
   const fitCanvas = useCallback(() => {
     const viewport = viewportRef.current;
@@ -165,6 +168,28 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
           event.preventDefault();
           setZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1));
         }}
+        onDragEnter={(event) => {
+          if (event.dataTransfer.types.includes("Files")) {
+            event.preventDefault();
+            setDraggingFile(true);
+          }
+        }}
+        onDragOver={(event) => {
+          if (event.dataTransfer.types.includes("Files"))
+            event.preventDefault();
+        }}
+        onDragLeave={(event) => {
+          if (event.currentTarget === event.target) setDraggingFile(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          setDraggingFile(false);
+          const file = event.dataTransfer.files[0];
+          if (file)
+            void localAssetFromFile(file)
+              .then((asset) => insertAsset(asset))
+              .catch(() => undefined);
+        }}
       >
         <div className="grid min-h-full min-w-full place-items-center p-12">
           <div
@@ -186,6 +211,16 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
           </div>
         </div>
       </div>
+      {draggingFile ? (
+        <div className="pointer-events-none absolute inset-5 z-30 grid place-items-center rounded-3xl border-2 border-dashed border-violet-500 bg-violet-500/10 backdrop-blur-sm">
+          <div className="rounded-2xl bg-white px-8 py-5 text-center shadow-xl">
+            <p className="font-black text-violet-700">Drop image onto canvas</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              PNG, JPEG, WebP, or SVG up to 10 MB
+            </p>
+          </div>
+        </div>
+      ) : null}
       {children}
     </section>
   );

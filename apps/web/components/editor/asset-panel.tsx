@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { API_URL, absoluteAssetUrl, type AssetItem } from "../../lib/assets";
+import {
+  API_URL,
+  absoluteAssetUrl,
+  localAssetFromFile,
+  type AssetItem,
+} from "../../lib/assets";
 import { authHeaders } from "../../lib/auth";
 import { useEditorStore } from "../../lib/editor-store";
 
@@ -16,7 +21,7 @@ export function AssetPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [message, setMessage] = useState(
-    "Upload images to build your library.",
+    "Upload an image and place it directly on the canvas.",
   );
   const [uploading, setUploading] = useState(false);
   const insertAsset = useEditorStore((state) => state.insertAsset);
@@ -62,9 +67,25 @@ export function AssetPanel() {
       const result = (await response.json()) as ApiResponse<AssetItem>;
       if (!response.ok) throw new Error(result.message);
       setAssets((current) => [result.data, ...current]);
-      setMessage("Image uploaded. Click it to insert.");
+      insertAsset(result.data);
+      setMessage("Image uploaded and added to the canvas.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Upload failed");
+      try {
+        const localAsset = await localAssetFromFile(file);
+        setAssets((current) => [localAsset, ...current]);
+        insertAsset(localAsset);
+        setMessage(
+          "Added locally. Start the API later to save it to the cloud.",
+        );
+      } catch (localError) {
+        setMessage(
+          localError instanceof Error
+            ? localError.message
+            : error instanceof Error
+              ? error.message
+              : "Upload failed",
+        );
+      }
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -82,7 +103,7 @@ export function AssetPanel() {
           disabled={uploading}
           onClick={() => fileRef.current?.click()}
         >
-          {uploading ? "Uploading..." : "Upload"}
+          {uploading ? "Adding..." : "Upload image"}
         </button>
         <input
           ref={fileRef}
@@ -93,6 +114,12 @@ export function AssetPanel() {
           onChange={(event) => void upload(event.target.files?.[0])}
         />
       </div>
+      <button
+        className="mb-3 flex w-full items-center justify-center rounded-xl border border-dashed border-violet-300 bg-violet-50 px-3 py-3 text-xs font-bold text-violet-700 transition hover:bg-violet-100"
+        onClick={() => fileRef.current?.click()}
+      >
+        Choose from computer
+      </button>
       <p className="mb-3 text-xs leading-5 text-zinc-500">{message}</p>
       <div className="grid grid-cols-2 gap-2" data-testid="asset-list">
         {assets.map((asset) => (

@@ -81,6 +81,54 @@ describe("editor transforms", () => {
   });
 });
 
+describe("element library", () => {
+  it("creates ellipse, line, and frame nodes through commands", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addEllipse();
+    useEditorStore.getState().addLine();
+    useEditorStore.getState().addFrame();
+
+    const nodes = Object.values(useEditorStore.getState().document.nodes);
+    expect(nodes.map((node) => node.type)).toEqual([
+      "ellipse",
+      "line",
+      "frame",
+    ]);
+    expect(useEditorStore.getState().document.pages[0]?.children[0]).toBe(
+      nodes.find((node) => node.type === "frame")?.id,
+    );
+    expect(
+      nodes.find((node) => node.type === "line")?.style.stroke?.width,
+    ).toBe(4);
+  });
+
+  it("updates appearance and image fit through commands", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addRect();
+    useEditorStore.getState().updateStroke("#112233", 6);
+    useEditorStore.getState().updateOpacity(0.5);
+    useEditorStore.getState().updateCornerRadius(28);
+
+    let state = useEditorStore.getState();
+    let selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.style.opacity).toBe(0.5);
+    expect(selected?.style.stroke?.width).toBe(6);
+    expect(selected?.type === "rect" && selected.cornerRadius).toBe(28);
+
+    state.insertAsset(assetItem("fit_asset", "fit.png"));
+    useEditorStore.getState().updateImageFit("contain");
+    state = useEditorStore.getState();
+    selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.type === "image" && selected.image.fit).toBe("contain");
+  });
+});
+
 const assetItem = (id: string, filename: string) => ({
   id,
   filename,
