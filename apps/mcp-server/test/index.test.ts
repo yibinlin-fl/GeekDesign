@@ -53,6 +53,14 @@ describe("MCP tools", () => {
       "replace_image",
       "move_element",
       "resize_element",
+      "delete_element",
+      "rotate_element",
+      "reorder_element",
+      "group_elements",
+      "ungroup_element",
+      "add_page",
+      "delete_page",
+      "set_page_background",
       "set_style",
       "align_element",
       "apply_palette",
@@ -60,6 +68,39 @@ describe("MCP tools", () => {
       "export_png",
       "export_pdf",
     ]);
+  });
+
+  it("maps structure and page tools to canonical commands", async () => {
+    const api = createApi();
+    const tools = createToolRegistry(
+      api,
+      { currentProjectId: "project_1" },
+      new MemoryAuditLogger(),
+    );
+
+    await tools.get("rotate_element")!.handler({
+      node_id: "text_1",
+      rotation: 45,
+    });
+    await tools.get("add_page")!.handler({
+      name: "Page 2",
+      background_color: "#ffffff",
+    });
+
+    expect(api.executeCommand).toHaveBeenNthCalledWith(
+      1,
+      "project_1",
+      "ROTATE_NODE",
+      { nodeId: "text_1", rotation: 45 },
+    );
+    expect(api.executeCommand).toHaveBeenNthCalledWith(
+      2,
+      "project_1",
+      "ADD_PAGE",
+      expect.objectContaining({
+        page: expect.objectContaining({ name: "Page 2", children: [] }),
+      }),
+    );
   });
 
   it("validates update_text and calls the Command API", async () => {

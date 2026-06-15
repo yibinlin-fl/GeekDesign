@@ -4,6 +4,7 @@ import type {
   CommandSource,
   CommandType,
 } from "./types";
+import { COMMAND_SCHEMA_VERSION } from "./contract";
 
 const createId = (): string =>
   `command_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
@@ -16,6 +17,7 @@ export function createCommand<T extends CommandType>(
 ): Command<T> {
   return {
     ...input,
+    schemaVersion: input.schemaVersion ?? COMMAND_SCHEMA_VERSION,
     id: input.id ?? createId(),
     timestamp: input.timestamp ?? Date.now(),
   } as Command<T>;

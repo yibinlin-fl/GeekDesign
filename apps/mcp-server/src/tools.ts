@@ -256,6 +256,7 @@ function rawDefinitions(api: ApiClient, context: McpContext): ToolDefinition[] {
       },
     },
     ...imageAndTransformTools(api, context),
+    ...structureTools(api, context),
     ...styleAndOutputTools(api, context),
   ];
 }
@@ -356,6 +357,171 @@ function imageAndTransformTools(
             nodeId: args.node_id,
             patch: { transform: { width: args.width, height: args.height } },
           },
+        );
+      },
+    },
+  ];
+}
+
+function structureTools(api: ApiClient, context: McpContext): ToolDefinition[] {
+  const projectAndNodeIds = z
+    .object({
+      project_id: idSchema.optional(),
+      node_ids: z.array(idSchema).min(1).max(100),
+    })
+    .strict();
+  return [
+    {
+      name: "delete_element",
+      description: "Delete an element and descendants after confirmation.",
+      schema: nodeSchema.extend({ confirmed: confirmationSchema }).strict(),
+      confirmationRequired: true,
+      handler: (raw) => {
+        const args = nodeSchema.passthrough().parse(raw);
+        return api.executeCommand(
+          currentProject(context, args.project_id),
+          "DELETE_NODE",
+          { nodeId: args.node_id },
+        );
+      },
+    },
+    {
+      name: "rotate_element",
+      description: "Rotate an element through the backend Command API.",
+      schema: nodeSchema.extend({ rotation: z.number().finite() }).strict(),
+      handler: (raw) => {
+        const args = nodeSchema.extend({ rotation: z.number() }).parse(raw);
+        return api.executeCommand(
+          currentProject(context, args.project_id),
+          "ROTATE_NODE",
+          { nodeId: args.node_id, rotation: args.rotation },
+        );
+      },
+    },
+    {
+      name: "reorder_element",
+      description: "Reorder an element within its parent layer list.",
+      schema: nodeSchema
+        .extend({ parent_id: idSchema, new_index: z.number().int().nonnegative() })
+        .strict(),
+      handler: (raw) => {
+        const args = nodeSchema
+          .extend({ parent_id: z.string(), new_index: z.number().int() })
+          .parse(raw);
+        return api.executeCommand(
+          currentProject(context, args.project_id),
+          "REORDER_NODE",
+          {
+            parentId: args.parent_id,
+            nodeId: args.node_id,
+            newIndex: args.new_index,
+          },
+        );
+      },
+    },
+    {
+      name: "group_elements",
+      description: "Group sibling elements while preserving their order.",
+      schema: projectAndNodeIds,
+      handler: (raw) => {
+        const args = projectAndNodeIds.parse(raw);
+        return api.executeCommand(
+          currentProject(context, args.project_id),
+          "GROUP_NODES",
+          { nodeIds: args.node_ids, groupId: uid("group") },
+        );
+      },
+    },
+    {
+      name: "ungroup_element",
+      description: "Ungroup one group element.",
+      schema: nodeSchema,
+      handler: (raw) => {
+        const args = nodeSchema.parse(raw);
+        return api.executeCommand(
+          currentProject(context, args.project_id),
+          "UNGROUP_NODES",
+          { groupId: args.node_id },
+        );
+      },
+    },
+    {
+      name: "add_page",
+      description: "Add an empty page to the current design.",
+      schema: z
+        .object({
+          project_id: idSchema.optional(),
+          name: z.string().min(1).max(100).default("New page"),
+          background_color: colorSchema.default("#ffffff"),
+        })
+        .strict(),
+      handler: (raw) => {
+        const args = z
+          .object({
+            project_id: z.string().optional(),
+            name: z.string(),
+            background_color: z.string(),
+          })
+          .parse(raw);
+        return api.executeCommand(
+          currentProject(context, args.project_id),
+          "ADD_PAGE",
+          {
+            page: {
+              id: uid("page"),
+              name: args.name,
+              background: { type: "solid", color: args.background_color },
+              children: [],
+            },
+          },
+        );
+      },
+    },
+    {
+      name: "delete_page",
+      description: "Delete a page and its contents after confirmation.",
+      schema: z
+        .object({
+          project_id: idSchema.optional(),
+          page_id: idSchema,
+          confirmed: confirmationSchema,
+        })
+        .strict(),
+      confirmationRequired: true,
+      handler: (raw) => {
+        const args = z
+          .object({ project_id: z.string().optional(), page_id: z.string() })
+          .passthrough()
+          .parse(raw);
+        return api.executeCommand(
+          currentProject(context, args.project_id),
+          "DELETE_PAGE",
+          { pageId: args.page_id },
+        );
+      },
+    },
+    {
+      name: "set_page_background",
+      description: "Set a page solid background color.",
+      schema: z
+        .object({
+          project_id: idSchema.optional(),
+          page_id: idSchema,
+          color: colorSchema,
+        })
+        .strict(),
+      handler: (raw) => {
+        const args = z
+          .object({
+            project_id: z.string().optional(),
+            page_id: z.string(),
+            color: z.string(),
+          })
+          .parse(raw);
+        return api.executeCommand(
+          currentProject(context, args.project_id),
+          "SET_BACKGROUND",
+          { pageId: args.page_id, background: { type: "solid", color: args.color } },
         );
       },
     },

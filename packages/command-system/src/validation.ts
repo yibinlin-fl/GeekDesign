@@ -1,4 +1,5 @@
 import type { Command, CommandSource, CommandType } from "./types";
+import { COMMAND_SCHEMA_VERSION } from "./contract";
 import { CommandValidationError } from "./errors";
 
 const commandTypes = new Set<CommandType>([
@@ -45,6 +46,24 @@ export function validateCommand(input: unknown): Command {
   requireString(input.designId, "command.designId");
   requireString(input.userId, "command.userId");
   requireFinite(input.timestamp, "command.timestamp");
+  if (
+    input.schemaVersion !== undefined &&
+    input.schemaVersion !== COMMAND_SCHEMA_VERSION
+  ) {
+    throw new CommandValidationError(
+      `Unsupported command schemaVersion "${String(input.schemaVersion)}"`,
+    );
+  }
+  if (
+    input.clientSequence !== undefined &&
+    (typeof input.clientSequence !== "number" ||
+      !Number.isInteger(input.clientSequence) ||
+      input.clientSequence < 0)
+  ) {
+    throw new CommandValidationError(
+      "command.clientSequence must be a non-negative integer",
+    );
+  }
 
   if (!commandTypes.has(input.type as CommandType)) {
     throw new CommandValidationError(

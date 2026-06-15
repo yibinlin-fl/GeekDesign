@@ -128,3 +128,17 @@ def test_export_pdf_requires_confirmation() -> None:
 
     assert result["status"] == "confirmation_required"
     assert api.export_calls == 0
+
+
+def test_structure_and_page_tools_use_command_api() -> None:
+    api = FakeApi()
+    registry = create_design_tool_registry(api)
+    context = ToolContext("project_1")
+
+    registry.execute("rotate_element", {"node_id": "text_1", "rotation": 45}, context)
+    registry.execute("add_page", {"name": "Page 2"}, context)
+    delete_result = registry.execute("delete_element", {"node_id": "text_1"}, context)
+
+    assert api.commands[0]["type"] == "ROTATE_NODE"
+    assert api.commands[1]["type"] == "ADD_PAGE"
+    assert delete_result["status"] == "confirmation_required"

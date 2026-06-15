@@ -58,6 +58,7 @@ export interface CommandPayloadMap {
 
 export type Command<T extends CommandType = CommandType> = {
   [Key in T]: {
+    schemaVersion?: "0.1.0";
     id: string;
     type: Key;
     designId: string;
@@ -66,6 +67,7 @@ export type Command<T extends CommandType = CommandType> = {
     source: CommandSource;
     payload: CommandPayloadMap[Key];
     requireConfirmation?: boolean;
+    clientSequence?: number;
   };
 }[T];
 

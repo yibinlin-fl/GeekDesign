@@ -158,11 +158,11 @@ feat(editor): add multi-select alignment and layer controls
 Goal: make Web Editor, MCP, AI Agent, and backend persistence use equivalent
 validated Commands.
 
-- [ ] Define a canonical versioned Command schema
-- [ ] Export Command JSON Schema from `packages/command-system`
-- [ ] Add command schema version and optional client sequence fields
-- [ ] Expand FastAPI CommandRequest to every TypeScript command type
-- [ ] Implement backend parity for delete, move, resize, rotate, reorder, group,
+- [x] Define a canonical versioned Command schema
+- [x] Export Command JSON Schema from `packages/command-system`
+- [x] Add command schema version and optional client sequence fields
+- [x] Expand FastAPI CommandRequest to every TypeScript command type
+- [x] Implement backend parity for delete, move, resize, rotate, reorder, group,
       ungroup, assets, and pages
 - [ ] Add shared golden command fixtures executed by TypeScript and Python tests
 - [ ] Verify both executors produce equivalent Design Documents
@@ -170,7 +170,7 @@ validated Commands.
 - [ ] Keep optimistic local execution, then reconcile server acknowledgement
 - [ ] Persist operation metadata and command ordering
 - [ ] Define server conflict and stale-document behavior
-- [ ] Expose the expanded commands through MCP and Agent tools
+- [x] Expose the expanded commands through MCP and Agent tools
 
 Recommended direction:
 

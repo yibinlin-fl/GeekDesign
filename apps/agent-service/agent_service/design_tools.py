@@ -37,6 +37,36 @@ class MoveElementArguments(StrictArguments):
     y: float
 
 
+class NodeArguments(StrictArguments):
+    node_id: str = Field(min_length=1)
+
+
+class RotateElementArguments(NodeArguments):
+    rotation: float
+
+
+class ReorderElementArguments(NodeArguments):
+    parent_id: str = Field(min_length=1)
+    new_index: int = Field(ge=0)
+
+
+class GroupElementsArguments(StrictArguments):
+    node_ids: list[str] = Field(min_length=1, max_length=100)
+
+
+class AddPageArguments(StrictArguments):
+    name: str = Field(default="New page", min_length=1, max_length=100)
+    background_color: str = Field(default="#ffffff", pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+class PageArguments(StrictArguments):
+    page_id: str = Field(min_length=1)
+
+
+class SetPageBackgroundArguments(PageArguments):
+    color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+
+
 class SetStyleArguments(StrictArguments):
     node_id: str = Field(min_length=1)
     style: dict[str, Any]
@@ -126,6 +156,78 @@ class DesignToolService:
             dry_run=context.dry_run,
         )
 
+    def delete_element(self, args: NodeArguments, context: ToolContext) -> dict[str, Any]:
+        return self.api.execute_command(
+            context.project_id, "DELETE_NODE", {"nodeId": args.node_id}, dry_run=context.dry_run
+        )
+
+    def rotate_element(self, args: RotateElementArguments, context: ToolContext) -> dict[str, Any]:
+        return self.api.execute_command(
+            context.project_id,
+            "ROTATE_NODE",
+            {"nodeId": args.node_id, "rotation": args.rotation},
+            dry_run=context.dry_run,
+        )
+
+    def reorder_element(
+        self, args: ReorderElementArguments, context: ToolContext
+    ) -> dict[str, Any]:
+        return self.api.execute_command(
+            context.project_id,
+            "REORDER_NODE",
+            {"parentId": args.parent_id, "nodeId": args.node_id, "newIndex": args.new_index},
+            dry_run=context.dry_run,
+        )
+
+    def group_elements(self, args: GroupElementsArguments, context: ToolContext) -> dict[str, Any]:
+        return self.api.execute_command(
+            context.project_id,
+            "GROUP_NODES",
+            {"nodeIds": args.node_ids, "groupId": f"group_{uuid4().hex}"},
+            dry_run=context.dry_run,
+        )
+
+    def ungroup_element(self, args: NodeArguments, context: ToolContext) -> dict[str, Any]:
+        return self.api.execute_command(
+            context.project_id,
+            "UNGROUP_NODES",
+            {"groupId": args.node_id},
+            dry_run=context.dry_run,
+        )
+
+    def add_page(self, args: AddPageArguments, context: ToolContext) -> dict[str, Any]:
+        return self.api.execute_command(
+            context.project_id,
+            "ADD_PAGE",
+            {
+                "page": {
+                    "id": f"page_{uuid4().hex}",
+                    "name": args.name,
+                    "background": {"type": "solid", "color": args.background_color},
+                    "children": [],
+                }
+            },
+            dry_run=context.dry_run,
+        )
+
+    def delete_page(self, args: PageArguments, context: ToolContext) -> dict[str, Any]:
+        return self.api.execute_command(
+            context.project_id,
+            "DELETE_PAGE",
+            {"pageId": args.page_id},
+            dry_run=context.dry_run,
+        )
+
+    def set_page_background(
+        self, args: SetPageBackgroundArguments, context: ToolContext
+    ) -> dict[str, Any]:
+        return self.api.execute_command(
+            context.project_id,
+            "SET_BACKGROUND",
+            {"pageId": args.page_id, "background": {"type": "solid", "color": args.color}},
+            dry_run=context.dry_run,
+        )
+
     def set_style(self, args: SetStyleArguments, context: ToolContext) -> dict[str, Any]:
         return self.api.execute_command(
             context.project_id,
@@ -200,6 +302,64 @@ def create_design_tool_registry(api: CommandApiClient) -> ToolRegistry:
             "Move an element through a command.",
             MoveElementArguments,
             service.move_element,
+            True,
+        ),
+        ToolDefinition(
+            "delete_element",
+            "Delete one element and its descendants.",
+            NodeArguments,
+            service.delete_element,
+            True,
+            requires_confirmation=True,
+        ),
+        ToolDefinition(
+            "rotate_element",
+            "Rotate an element through a command.",
+            RotateElementArguments,
+            service.rotate_element,
+            True,
+        ),
+        ToolDefinition(
+            "reorder_element",
+            "Reorder an element within its parent.",
+            ReorderElementArguments,
+            service.reorder_element,
+            True,
+        ),
+        ToolDefinition(
+            "group_elements",
+            "Group sibling elements.",
+            GroupElementsArguments,
+            service.group_elements,
+            True,
+        ),
+        ToolDefinition(
+            "ungroup_element",
+            "Ungroup a group element.",
+            NodeArguments,
+            service.ungroup_element,
+            True,
+        ),
+        ToolDefinition(
+            "add_page",
+            "Add an empty design page.",
+            AddPageArguments,
+            service.add_page,
+            True,
+        ),
+        ToolDefinition(
+            "delete_page",
+            "Delete a design page.",
+            PageArguments,
+            service.delete_page,
+            True,
+            requires_confirmation=True,
+        ),
+        ToolDefinition(
+            "set_page_background",
+            "Set a page solid background.",
+            SetPageBackgroundArguments,
+            service.set_page_background,
             True,
         ),
         ToolDefinition(

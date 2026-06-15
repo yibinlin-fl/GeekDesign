@@ -48,6 +48,7 @@ class CommandApiClient:
             "POST",
             f"/projects/{project_id}/commands",
             json={
+                "schemaVersion": "0.1.0",
                 "id": f"ai_command_{uuid4().hex}",
                 "type": command_type,
                 "source": "ai",

@@ -97,6 +97,7 @@ export class HttpApiClient implements ApiClient {
     return this.call(`/projects/${encodeURIComponent(projectId)}/commands`, {
       method: "POST",
       body: JSON.stringify({
+        schemaVersion: "0.1.0",
         id: `mcp_command_${randomUUID().replaceAll("-", "")}`,
         type,
         source: "ai",

@@ -43,6 +43,44 @@ def document_with_text(valid_document: dict) -> dict:
     return document
 
 
+def document_with_two_rects(valid_document: dict) -> dict:
+    document = deepcopy(valid_document)
+    document["pages"][0]["children"] = ["rect_1", "rect_2"]
+    for index, node_id in enumerate(document["pages"][0]["children"]):
+        document["nodes"][node_id] = {
+            "id": node_id,
+            "type": "rect",
+            "parentId": "page_1",
+            "transform": {
+                "x": index * 120,
+                "y": 20,
+                "width": 100,
+                "height": 80,
+                "rotation": 0,
+                "scaleX": 1,
+                "scaleY": 1,
+            },
+            "style": {"opacity": 1, "visible": True, "locked": False},
+            "cornerRadius": 0,
+        }
+    return document
+
+
+def run_command(client: TestClient, project_id: str, command_type: str, payload: dict) -> dict:
+    response = client.post(
+        f"/api/projects/{project_id}/commands",
+        json={
+            "schemaVersion": "0.1.0",
+            "id": f"command_{command_type.lower()}",
+            "type": command_type,
+            "source": "user",
+            "payload": payload,
+        },
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["data"]
+
+
 def test_ai_command_updates_text(client: TestClient, valid_document: dict) -> None:
     project = create_project(client, document_with_text(valid_document))
     response = client.post(
@@ -128,3 +166,100 @@ def test_update_node_can_replace_image_data(client: TestClient, valid_document: 
     )
 
     assert response.status_code == 200
+
+
+def test_transform_reorder_group_and_ungroup_commands(
+    client: TestClient, valid_document: dict
+) -> None:
+    project = create_project(client, document_with_two_rects(valid_document))
+    project_id = project["id"]
+
+    run_command(client, project_id, "RESIZE_NODE", {"nodeId": "rect_1", "width": 240, "height": 90})
+    run_command(client, project_id, "ROTATE_NODE", {"nodeId": "rect_1", "rotation": 30})
+    run_command(
+        client,
+        project_id,
+        "REORDER_NODE",
+        {"parentId": "page_1", "nodeId": "rect_1", "newIndex": 1},
+    )
+    run_command(
+        client,
+        project_id,
+        "GROUP_NODES",
+        {"nodeIds": ["rect_1", "rect_2"], "groupId": "group_1"},
+    )
+    grouped = client.get(f"/api/projects/{project_id}").json()["data"]["document_json"]
+    assert grouped["nodes"]["group_1"]["children"] == ["rect_2", "rect_1"]
+    assert grouped["nodes"]["rect_1"]["transform"]["rotation"] == 30
+
+    run_command(client, project_id, "UNGROUP_NODES", {"groupId": "group_1"})
+    saved = client.get(f"/api/projects/{project_id}").json()["data"]["document_json"]
+    assert saved["pages"][0]["children"] == ["rect_2", "rect_1"]
+    assert "group_1" not in saved["nodes"]
+
+
+def test_page_asset_and_delete_commands(client: TestClient, valid_document: dict) -> None:
+    project = create_project(client, document_with_text(valid_document))
+    project_id = project["id"]
+    run_command(
+        client,
+        project_id,
+        "ADD_PAGE",
+        {
+            "page": {
+                "id": "page_2",
+                "name": "Page 2",
+                "background": {"type": "solid", "color": "#ffffff"},
+                "children": [],
+            }
+        },
+    )
+    run_command(
+        client,
+        project_id,
+        "SET_BACKGROUND",
+        {"pageId": "page_2", "background": {"type": "solid", "color": "#ff0000"}},
+    )
+    run_command(
+        client,
+        project_id,
+        "REGISTER_ASSET",
+        {
+            "asset": {
+                "id": "asset_1",
+                "type": "image",
+                "uri": "/uploads/asset.png",
+                "mimeType": "image/png",
+            }
+        },
+    )
+    run_command(client, project_id, "DELETE_NODE", {"nodeId": "text_1"})
+    run_command(client, project_id, "DELETE_PAGE", {"pageId": "page_2"})
+
+    saved = client.get(f"/api/projects/{project_id}").json()["data"]["document_json"]
+    assert saved["pages"][0]["children"] == []
+    assert saved["assets"]["asset_1"]["mimeType"] == "image/png"
+
+
+def test_atomic_batch_failure_does_not_modify_project(
+    client: TestClient, valid_document: dict
+) -> None:
+    project = create_project(client, document_with_two_rects(valid_document))
+    response = client.post(
+        f"/api/projects/{project['id']}/commands",
+        json={
+            "id": "command_atomic_failure",
+            "type": "UPDATE_NODES",
+            "source": "user",
+            "payload": {
+                "updates": [
+                    {"nodeId": "rect_1", "patch": {"transform": {"x": 999}}},
+                    {"nodeId": "missing", "patch": {"transform": {"x": 999}}},
+                ]
+            },
+        },
+    )
+
+    assert response.status_code == 400
+    saved = client.get(f"/api/projects/{project['id']}").json()["data"]["document_json"]
+    assert saved["nodes"]["rect_1"]["transform"]["x"] == 0

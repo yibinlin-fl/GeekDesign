@@ -12,7 +12,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   CommandExecutionError,
+  COMMAND_SCHEMA_VERSION,
   CommandExecutor,
+  commandJsonSchema,
+  commandTypes,
   createCommand,
   moveNodeCommand,
   setStyleCommand,
@@ -355,6 +358,20 @@ describe("CommandExecutor", () => {
 
   it("validates command envelope fields", () => {
     expect(() => validateCommand({ type: "UPDATE_TEXT" })).toThrow();
+  });
+
+  it("exports a versioned wire command contract", () => {
+    const command = updateTextCommand(context, {
+      nodeId: "title",
+      content: "Versioned",
+    });
+
+    expect(command.schemaVersion).toBe(COMMAND_SCHEMA_VERSION);
+    expect(commandTypes).toContain("GROUP_NODES");
+    expect(commandJsonSchema.properties.type.enum).toEqual(commandTypes);
+    expect(() =>
+      validateCommand({ ...command, schemaVersion: "9.9.9" }),
+    ).toThrow();
   });
 
   it("enforces requireConfirmation before high-risk execution", () => {

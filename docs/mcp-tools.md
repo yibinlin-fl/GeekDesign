@@ -4,6 +4,11 @@ GeekDesign MCP Server exposes the platform's controlled design capabilities to M
 AI clients. It uses the official TypeScript MCP SDK over stdio and delegates persistence,
 ownership checks, commands, templates, assets, and exports to `apps/api`.
 
+Every mutating tool maps to the versioned backend Command API. The server
+exposes deletion, rotation, layer reordering, grouping, ungrouping, page
+creation/deletion, and page background updates in addition to content and
+style tools. Destructive deletion tools require explicit confirmation.
+
 ## Run
 
 Start the FastAPI service first, then run:
