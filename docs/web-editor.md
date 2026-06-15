@@ -50,6 +50,14 @@ committed as one command when the pointer is released.
 
 Keyboard actions include Delete/Backspace, arrow-key movement, Shift + arrow
 movement, Ctrl/Cmd + D duplication, and Ctrl/Cmd + Z history navigation.
+Ctrl/Cmd + C, X, and V provide an internal design clipboard. Ctrl/Cmd + G
+groups selected siblings, while Ctrl/Cmd + Shift + G ungroups a selected group.
+
+Shift-click and drag marquee selection build an ordered multi-selection without
+persisting selection state in the document. Multi-selected siblings can move,
+align, distribute, and group through atomic Commands. The manipulation toolbar
+also exposes layer ordering, grid visibility, and 10-pixel grid snapping.
+Right-clicking the canvas opens common clipboard, grouping, and delete actions.
 
 Double-clicking a text node opens an inline editor positioned over the canvas
 node. Keystrokes remain local draft state while editing; blur or Ctrl/Cmd +
@@ -83,11 +91,13 @@ export service can reuse Renderer Core for high-resolution server-side output.
 ## Current Scope
 
 The MVP supports multi-page designs, blank pages, text, rectangles, ellipses,
-lines, frames, image placeholders, layer selection, drag movement, resize,
-rotation, keyboard movement, duplication, deletion, precise transform fields,
-text editing, font size, fills, strokes, opacity, shadows, locking, visibility,
-undo/redo, local save/load, and PNG export. The AI Assistant panel is a visual
-placeholder; future AI actions must dispatch the same normal commands.
+lines, frames, image placeholders, multi-selection, marquee selection,
+alignment, distribution, grouping, layer ordering, clipboard actions, drag
+movement, resize, rotation, keyboard movement, duplication, deletion, precise
+transform fields, text editing, font size, fills, strokes, opacity, shadows,
+locking, visibility, undo/redo, local save/load, and PNG export. The AI
+Assistant panel is a visual placeholder; future AI actions must dispatch the
+same normal commands.
 
 The Asset Panel uploads trusted image types through the API, lists generated
 thumbnails, and inserts real ImageNodes. A `REGISTER_ASSET` command first adds the

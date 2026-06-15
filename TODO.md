@@ -23,6 +23,7 @@ Recent editor milestone commits:
 - `371790d feat(editor): add shapes and local image workflow`
 - `4876d64 feat(editor): add inline text editing and typography tools`
 - `4b1ca94 feat(editor): add multi-page design workflow`
+- `pending feat(editor): add multi-select alignment and layer controls`
 
 ## Is The Editor Already PowerPoint-Level?
 
@@ -124,19 +125,20 @@ operation stream.
 Goal: expose the capabilities users expect from a serious slide editor before
 adding more content types.
 
-- [ ] Replace `selectedNodeId` with ordered `selectedNodeIds`
-- [ ] Add Shift-click multi-select
-- [ ] Add drag marquee selection
-- [ ] Render one combined multi-selection bounding box
-- [ ] Move and resize multiple selected elements as one undoable operation
-- [ ] Add align left, center, right, top, middle, bottom
-- [ ] Add distribute horizontally and vertically
-- [ ] Add bring forward, send backward, bring to front, send to back
-- [ ] Add group and ungroup UI
+- [x] Add ordered `selectedNodeIds` while retaining a primary selection
+- [x] Add Shift-click multi-select
+- [x] Add drag marquee selection
+- [x] Render one combined multi-selection bounding box
+- [x] Move multiple selected elements as one undoable operation
+- [x] Add align left, center, right, top, middle, bottom
+- [x] Add distribute horizontally and vertically
+- [x] Add bring forward, send backward, bring to front, send to back
+- [x] Add group and ungroup UI
 - [ ] Add smart guides and edge/center snapping
-- [ ] Add configurable grid visibility and snap settings
-- [ ] Add copy, cut, paste, and paste-in-place
-- [ ] Add context menu for common operations
+- [x] Add configurable grid visibility and snap settings
+- [x] Add copy, cut, paste, and paste-in-place
+- [x] Add context menu for common operations
+- [x] Resize multiple selected elements as one undoable operation
 
 Acceptance criteria:
 

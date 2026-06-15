@@ -21,7 +21,7 @@ import {
   type Paint,
   type TextNode,
 } from "@geekdesign/design-schema";
-import { SceneGraph } from "@geekdesign/scene-graph";
+import { SceneGraph, type NodePatch } from "@geekdesign/scene-graph";
 import { create } from "zustand";
 
 import { toAssetRef, type AssetItem } from "./assets";
@@ -45,16 +45,20 @@ let executor = new CommandExecutor({
   sceneGraph: SceneGraph.fromDocument(createBlankDocument()),
 });
 let activePageId = executor.toDocument().pages[0]!.id;
+let clipboard: { document: DesignDocument; nodeIds: string[] } | undefined;
 
 interface EditorState {
   document: DesignDocument;
   currentPageId: string;
   selectedNodeId?: string;
+  selectedNodeIds: string[];
   hoveredNodeId?: string;
   canUndo: boolean;
   canRedo: boolean;
   saved: boolean;
   zoom: number;
+  showGrid: boolean;
+  snapToGrid: boolean;
   newDesign: () => void;
   selectPage: (pageId: string) => void;
   addPage: () => void;
@@ -68,7 +72,8 @@ interface EditorState {
   addFrame: () => void;
   addImagePlaceholder: () => void;
   insertAsset: (asset: AssetItem, replaceSelected?: boolean) => void;
-  selectNode: (nodeId?: string) => void;
+  selectNode: (nodeId?: string, additive?: boolean) => void;
+  selectNodes: (nodeIds: string[]) => void;
   hoverNode: (nodeId?: string) => void;
   updateText: (content: string) => void;
   updateTextNode: (nodeId: string, content: string) => void;
@@ -83,10 +88,29 @@ interface EditorState {
   updateLocked: (locked: boolean) => void;
   updateVisible: (visible: boolean) => void;
   moveSelected: (x: number, y: number) => void;
+  moveSelectionBy: (deltaX: number, deltaY: number) => void;
+  resizeSelection: (
+    before: Pick<Node["transform"], "x" | "y" | "width" | "height">,
+    after: Pick<Node["transform"], "x" | "y" | "width" | "height">,
+  ) => void;
   updateSelectedTransform: (transform: Partial<Node["transform"]>) => void;
+  alignSelected: (
+    alignment: "left" | "center" | "right" | "top" | "middle" | "bottom",
+  ) => void;
+  distributeSelected: (axis: "horizontal" | "vertical") => void;
+  groupSelected: () => void;
+  ungroupSelected: () => void;
+  reorderSelected: (
+    placement: "front" | "forward" | "backward" | "back",
+  ) => void;
   deleteSelected: () => void;
   duplicateSelected: () => void;
+  copySelected: () => void;
+  cutSelected: () => void;
+  pasteClipboard: () => void;
   setZoom: (zoom: number) => void;
+  toggleGrid: () => void;
+  toggleSnapToGrid: () => void;
   undo: () => void;
   redo: () => void;
   save: () => void;
@@ -116,13 +140,21 @@ const snapshot = () => {
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   ...snapshot(),
+  selectedNodeIds: [],
   zoom: 1,
+  showGrid: true,
+  snapToGrid: false,
   newDesign: () => {
     executor = new CommandExecutor({
       sceneGraph: SceneGraph.fromDocument(createBlankDocument()),
     });
     activePageId = executor.toDocument().pages[0]!.id;
-    set({ ...snapshot(), selectedNodeId: undefined, hoveredNodeId: undefined });
+    set({
+      ...snapshot(),
+      selectedNodeId: undefined,
+      selectedNodeIds: [],
+      hoveredNodeId: undefined,
+    });
   },
   selectPage: (pageId) => {
     if (!executor.toDocument().pages.some((page) => page.id === pageId)) return;
@@ -130,6 +162,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       currentPageId: pageId,
       selectedNodeId: undefined,
+      selectedNodeIds: [],
       hoveredNodeId: undefined,
     });
   },
@@ -150,7 +183,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }),
     );
     activePageId = page.id;
-    set({ ...snapshot(), selectedNodeId: undefined, hoveredNodeId: undefined });
+    set({
+      ...snapshot(),
+      selectedNodeId: undefined,
+      selectedNodeIds: [],
+      hoveredNodeId: undefined,
+    });
   },
   duplicatePage: (pageId = activePageId) => {
     const document = executor.toDocument();
@@ -175,7 +213,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       duplicateNodeTree(document, nodeId, page.id),
     );
     activePageId = page.id;
-    set({ ...snapshot(), selectedNodeId: undefined, hoveredNodeId: undefined });
+    set({
+      ...snapshot(),
+      selectedNodeId: undefined,
+      selectedNodeIds: [],
+      hoveredNodeId: undefined,
+    });
   },
   deletePage: (pageId = activePageId) => {
     const document = executor.toDocument();
@@ -192,7 +235,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     );
     const pages = executor.toDocument().pages;
     activePageId = pages[Math.min(pageIndex, pages.length - 1)]!.id;
-    set({ ...snapshot(), selectedNodeId: undefined, hoveredNodeId: undefined });
+    set({
+      ...snapshot(),
+      selectedNodeId: undefined,
+      selectedNodeIds: [],
+      hoveredNodeId: undefined,
+    });
   },
   updatePageBackground: (background) => {
     executor.execute(
@@ -224,7 +272,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         payload: { parentId: pageId, node },
       }),
     );
-    set({ ...snapshot(), selectedNodeId: node.id });
+    set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
   },
   addRect: () => {
     const document = executor.toDocument();
@@ -245,7 +293,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         payload: { parentId: pageId, node },
       }),
     );
-    set({ ...snapshot(), selectedNodeId: node.id });
+    set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
   },
   addEllipse: () => {
     const document = executor.toDocument();
@@ -258,7 +306,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       style: { fill: { type: "solid", color: "#f43f5e" } },
     });
     executeCreateNode(pageId, node);
-    set({ ...snapshot(), selectedNodeId: node.id });
+    set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
   },
   addLine: () => {
     const document = executor.toDocument();
@@ -278,7 +326,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
     node.line.x2 = 260;
     executeCreateNode(pageId, node);
-    set({ ...snapshot(), selectedNodeId: node.id });
+    set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
   },
   addFrame: () => {
     const document = executor.toDocument();
@@ -293,7 +341,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       },
     });
     executeCreateNode(pageId, node, 0);
-    set({ ...snapshot(), selectedNodeId: node.id });
+    set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
   },
   addImagePlaceholder: () => {
     const document = executor.toDocument();
@@ -323,7 +371,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         payload: { parentId: pageId, node },
       }),
     );
-    set({ ...snapshot(), selectedNodeId: node.id });
+    set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
   },
   insertAsset: (assetItem, replaceSelected = false) => {
     const asset = toAssetRef(assetItem);
@@ -375,12 +423,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         payload: { parentId: pageId, node },
       }),
     );
-    set({ ...snapshot(), selectedNodeId: node.id });
+    set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
   },
-  selectNode: (selectedNodeId) =>
-    set((state) =>
-      state.selectedNodeId === selectedNodeId ? state : { selectedNodeId },
-    ),
+  selectNode: (selectedNodeId, additive = false) =>
+    set((state) => {
+      if (!selectedNodeId)
+        return { selectedNodeId: undefined, selectedNodeIds: [] };
+      if (!additive)
+        return { selectedNodeId, selectedNodeIds: [selectedNodeId] };
+      const selectedNodeIds = state.selectedNodeIds.includes(selectedNodeId)
+        ? state.selectedNodeIds.filter((nodeId) => nodeId !== selectedNodeId)
+        : [...state.selectedNodeIds, selectedNodeId];
+      return {
+        selectedNodeId: selectedNodeIds.at(-1),
+        selectedNodeIds,
+      };
+    }),
+  selectNodes: (selectedNodeIds) =>
+    set({
+      selectedNodeId: selectedNodeIds.at(-1),
+      selectedNodeIds: [...new Set(selectedNodeIds)],
+    }),
   hoverNode: (hoveredNodeId) =>
     set((state) =>
       state.hoveredNodeId === hoveredNodeId ? state : { hoveredNodeId },
@@ -536,12 +599,64 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   moveSelected: (x, y) => {
     const nodeId = get().selectedNodeId;
     if (!nodeId) return;
-    executor.execute(
-      createCommand({
-        ...commandContext(),
-        source: "user",
-        type: "UPDATE_NODE",
-        payload: { nodeId, patch: { transform: { x, y } } },
+    const document = executor.toDocument();
+    const node = document.nodes[nodeId];
+    if (!node) return;
+    const deltaX = x - node.transform.x;
+    const deltaY = y - node.transform.y;
+    const selectedNodeIds = get().selectedNodeIds;
+    executeNodeUpdates(
+      selectedNodeIds.map((selectedId) => {
+        const selected = document.nodes[selectedId]!;
+        return {
+          nodeId: selectedId,
+          patch: {
+            transform: {
+              x: selected.transform.x + deltaX,
+              y: selected.transform.y + deltaY,
+            },
+          },
+        };
+      }),
+    );
+    set(snapshot());
+  },
+  moveSelectionBy: (deltaX, deltaY) => {
+    const document = executor.toDocument();
+    executeNodeUpdates(
+      get().selectedNodeIds.map((nodeId) => {
+        const node = document.nodes[nodeId]!;
+        return {
+          nodeId,
+          patch: {
+            transform: {
+              x: node.transform.x + deltaX,
+              y: node.transform.y + deltaY,
+            },
+          },
+        };
+      }),
+    );
+    set(snapshot());
+  },
+  resizeSelection: (before, after) => {
+    const document = executor.toDocument();
+    const scaleX = after.width / before.width;
+    const scaleY = after.height / before.height;
+    executeNodeUpdates(
+      get().selectedNodeIds.map((nodeId) => {
+        const node = document.nodes[nodeId]!;
+        return {
+          nodeId,
+          patch: {
+            transform: {
+              x: after.x + (node.transform.x - before.x) * scaleX,
+              y: after.y + (node.transform.y - before.y) * scaleY,
+              width: Math.max(12, node.transform.width * scaleX),
+              height: Math.max(12, node.transform.height * scaleY),
+            },
+          },
+        };
       }),
     );
     set(snapshot());
@@ -559,20 +674,152 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     );
     set(snapshot());
   },
-  deleteSelected: () => {
-    const nodeId = get().selectedNodeId;
-    if (!nodeId) return;
+  alignSelected: (alignment) => {
+    const document = executor.toDocument();
+    const nodes = get()
+      .selectedNodeIds.map((nodeId) => document.nodes[nodeId])
+      .filter((node): node is Node => Boolean(node));
+    if (nodes.length < 2 || !sameParent(nodes)) return;
+    const bounds = selectionBounds(nodes);
+    executeNodeUpdates(
+      nodes.map((node) => {
+        const transform: Partial<Node["transform"]> = {};
+        if (alignment === "left") transform.x = bounds.x;
+        if (alignment === "center")
+          transform.x = bounds.x + (bounds.width - node.transform.width) / 2;
+        if (alignment === "right")
+          transform.x = bounds.x + bounds.width - node.transform.width;
+        if (alignment === "top") transform.y = bounds.y;
+        if (alignment === "middle")
+          transform.y = bounds.y + (bounds.height - node.transform.height) / 2;
+        if (alignment === "bottom")
+          transform.y = bounds.y + bounds.height - node.transform.height;
+        return { nodeId: node.id, patch: { transform } };
+      }),
+    );
+    set(snapshot());
+  },
+  distributeSelected: (axis) => {
+    const document = executor.toDocument();
+    const nodes = get()
+      .selectedNodeIds.map((nodeId) => document.nodes[nodeId])
+      .filter((node): node is Node => Boolean(node));
+    if (nodes.length < 3 || !sameParent(nodes)) return;
+    const horizontal = axis === "horizontal";
+    const sorted = [...nodes].sort(
+      (left, right) =>
+        (horizontal ? left.transform.x : left.transform.y) -
+        (horizontal ? right.transform.x : right.transform.y),
+    );
+    const first = sorted[0]!;
+    const last = sorted.at(-1)!;
+    const start = horizontal ? first.transform.x : first.transform.y;
+    const end = horizontal
+      ? last.transform.x + last.transform.width
+      : last.transform.y + last.transform.height;
+    const totalSize = sorted.reduce(
+      (sum, node) =>
+        sum + (horizontal ? node.transform.width : node.transform.height),
+      0,
+    );
+    const gap = (end - start - totalSize) / (sorted.length - 1);
+    let cursor = start;
+    executeNodeUpdates(
+      sorted.map((node) => {
+        const transform = horizontal ? { x: cursor } : { y: cursor };
+        cursor +=
+          (horizontal ? node.transform.width : node.transform.height) + gap;
+        return { nodeId: node.id, patch: { transform } };
+      }),
+    );
+    set(snapshot());
+  },
+  groupSelected: () => {
+    const nodeIds = get().selectedNodeIds;
+    const document = executor.toDocument();
+    const nodes = nodeIds
+      .map((nodeId) => document.nodes[nodeId])
+      .filter((node): node is Node => Boolean(node));
+    if (nodes.length < 2 || !sameParent(nodes)) return;
+    const groupId = id("group");
     executor.execute(
       createCommand({
         ...commandContext(),
         source: "user",
-        type: "DELETE_NODE",
-        payload: { nodeId },
+        type: "GROUP_NODES",
+        payload: { nodeIds, groupId, name: "Group" },
       }),
     );
     set({
       ...snapshot(),
+      selectedNodeId: groupId,
+      selectedNodeIds: [groupId],
+    });
+  },
+  ungroupSelected: () => {
+    const groupId = get().selectedNodeId;
+    const group = groupId ? executor.toDocument().nodes[groupId] : undefined;
+    if (!groupId || group?.type !== "group") return;
+    const childIds = [...group.children];
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UNGROUP_NODES",
+        payload: { groupId },
+      }),
+    );
+    set({
+      ...snapshot(),
+      selectedNodeId: childIds.at(-1),
+      selectedNodeIds: childIds,
+    });
+  },
+  reorderSelected: (placement) => {
+    const nodeId = get().selectedNodeId;
+    const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
+    if (!nodeId || !node) return;
+    const siblings = executor.getSceneGraph().getChildren(node.parentId);
+    const index = siblings.findIndex((candidate) => candidate.id === nodeId);
+    const newIndex =
+      placement === "front"
+        ? siblings.length - 1
+        : placement === "back"
+          ? 0
+          : placement === "forward"
+            ? Math.min(siblings.length - 1, index + 1)
+            : Math.max(0, index - 1);
+    if (newIndex === index) return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "REORDER_NODE",
+        payload: { parentId: node.parentId, nodeId, newIndex },
+      }),
+    );
+    set(snapshot());
+  },
+  deleteSelected: () => {
+    const nodeIds = topLevelSelection(
+      executor.toDocument(),
+      get().selectedNodeIds,
+    );
+    if (nodeIds.length === 0) return;
+    nodeIds.forEach((nodeId) =>
+      executor.execute(
+        createCommand({
+          ...commandContext(),
+          source: "user",
+          type: "DELETE_NODE",
+          payload: { nodeId },
+        }),
+      ),
+    );
+    set({
+      ...snapshot(),
       selectedNodeId: undefined,
+      selectedNodeIds: [],
       hoveredNodeId: undefined,
     });
   },
@@ -596,10 +843,37 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         payload: { parentId: duplicate.parentId, node: duplicate },
       }),
     );
-    set({ ...snapshot(), selectedNodeId: duplicate.id });
+    set({
+      ...snapshot(),
+      selectedNodeId: duplicate.id,
+      selectedNodeIds: [duplicate.id],
+    });
+  },
+  copySelected: () => {
+    const document = executor.toDocument();
+    const nodeIds = topLevelSelection(document, get().selectedNodeIds);
+    if (nodeIds.length > 0) clipboard = { document, nodeIds };
+  },
+  cutSelected: () => {
+    get().copySelected();
+    get().deleteSelected();
+  },
+  pasteClipboard: () => {
+    if (!clipboard) return;
+    const parentId = currentPage(executor.toDocument()).id;
+    const pastedIds = clipboard.nodeIds.map((nodeId) =>
+      duplicateNodeTree(clipboard!.document, nodeId, parentId, 20),
+    );
+    set({
+      ...snapshot(),
+      selectedNodeId: pastedIds.at(-1),
+      selectedNodeIds: pastedIds,
+    });
   },
   setZoom: (zoom) =>
     set({ zoom: Math.min(2, Math.max(0.25, Math.round(zoom * 100) / 100)) }),
+  toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
+  toggleSnapToGrid: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
   undo: () => {
     executor.undo();
     const next = snapshot();
@@ -610,6 +884,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         selectedNodeId && next.document.nodes[selectedNodeId]
           ? selectedNodeId
           : undefined,
+      selectedNodeIds: get().selectedNodeIds.filter(
+        (nodeId) => next.document.nodes[nodeId],
+      ),
       hoveredNodeId: undefined,
     });
   },
@@ -623,6 +900,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         selectedNodeId && next.document.nodes[selectedNodeId]
           ? selectedNodeId
           : undefined,
+      selectedNodeIds: get().selectedNodeIds.filter(
+        (nodeId) => next.document.nodes[nodeId],
+      ),
       hoveredNodeId: undefined,
     });
   },
@@ -645,6 +925,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ...snapshot(),
       saved: true,
       selectedNodeId: undefined,
+      selectedNodeIds: [],
       hoveredNodeId: undefined,
     });
   },
@@ -658,6 +939,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ...snapshot(),
       saved: true,
       selectedNodeId: undefined,
+      selectedNodeIds: [],
       hoveredNodeId: undefined,
     });
   },
@@ -675,6 +957,36 @@ function executeCreateNode(parentId: string, node: Node, index?: number): void {
   );
 }
 
+function executeNodeUpdates(
+  updates: Array<{ nodeId: string; patch: NodePatch }>,
+): void {
+  if (updates.length === 0) return;
+  executor.execute(
+    createCommand({
+      ...commandContext(),
+      source: "user",
+      type: "UPDATE_NODES",
+      payload: { updates },
+    }),
+  );
+}
+
+function sameParent(nodes: Node[]): boolean {
+  return nodes.every((node) => node.parentId === nodes[0]?.parentId);
+}
+
+function selectionBounds(nodes: Node[]) {
+  const left = Math.min(...nodes.map((node) => node.transform.x));
+  const top = Math.min(...nodes.map((node) => node.transform.y));
+  const right = Math.max(
+    ...nodes.map((node) => node.transform.x + node.transform.width),
+  );
+  const bottom = Math.max(
+    ...nodes.map((node) => node.transform.y + node.transform.height),
+  );
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
 function currentPage(document: DesignDocument): Page {
   return (
     document.pages.find((page) => page.id === activePageId) ??
@@ -686,12 +998,15 @@ function duplicateNodeTree(
   sourceDocument: DesignDocument,
   sourceNodeId: string,
   parentId: string,
-): void {
+  offset = 0,
+): string {
   const source = sourceDocument.nodes[sourceNodeId];
-  if (!source) return;
+  if (!source) return "";
   const duplicate = structuredClone(source);
   duplicate.id = id(source.type);
   duplicate.parentId = parentId;
+  duplicate.transform.x += offset;
+  duplicate.transform.y += offset;
   if (duplicate.type === "group" || duplicate.type === "frame") {
     const children = [...duplicate.children];
     duplicate.children = [];
@@ -699,9 +1014,25 @@ function duplicateNodeTree(
     children.forEach((childId) =>
       duplicateNodeTree(sourceDocument, childId, duplicate.id),
     );
-    return;
+    return duplicate.id;
   }
   executeCreateNode(parentId, duplicate);
+  return duplicate.id;
+}
+
+function topLevelSelection(
+  document: DesignDocument,
+  selectedNodeIds: string[],
+): string[] {
+  const selected = new Set(selectedNodeIds);
+  return selectedNodeIds.filter((nodeId) => {
+    let parentId = document.nodes[nodeId]?.parentId;
+    while (parentId && document.nodes[parentId]) {
+      if (selected.has(parentId)) return false;
+      parentId = document.nodes[parentId]?.parentId;
+    }
+    return Boolean(document.nodes[nodeId]);
+  });
 }
 
 export const getSelectedNode = (

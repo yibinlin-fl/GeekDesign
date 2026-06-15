@@ -5,6 +5,7 @@ const commandTypes = new Set<CommandType>([
   "CREATE_NODE",
   "DELETE_NODE",
   "UPDATE_NODE",
+  "UPDATE_NODES",
   "MOVE_NODE",
   "RESIZE_NODE",
   "ROTATE_NODE",
@@ -84,6 +85,24 @@ export function validateCommand(input: unknown): Command {
       requireString(payload.nodeId, "payload.nodeId");
       if (!isRecord(payload.patch))
         throw new CommandValidationError("payload.patch must be an object");
+      break;
+    case "UPDATE_NODES":
+      if (!Array.isArray(payload.updates) || payload.updates.length === 0) {
+        throw new CommandValidationError(
+          "payload.updates must contain at least one update",
+        );
+      }
+      payload.updates.forEach((update) => {
+        if (!isRecord(update))
+          throw new CommandValidationError(
+            "payload.updates[] must be an object",
+          );
+        requireString(update.nodeId, "payload.updates[].nodeId");
+        if (!isRecord(update.patch))
+          throw new CommandValidationError(
+            "payload.updates[].patch must be an object",
+          );
+      });
       break;
     case "MOVE_NODE":
       requireString(payload.nodeId, "payload.nodeId");

@@ -212,6 +212,39 @@ describe("multi-page editor", () => {
   });
 });
 
+describe("professional manipulation", () => {
+  it("multi-selects, aligns, groups, and ungroups through commands", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addRect();
+    const rectId = useEditorStore.getState().selectedNodeId!;
+    store.addEllipse();
+    const ellipseId = useEditorStore.getState().selectedNodeId!;
+
+    store.selectNode(rectId);
+    store.selectNode(ellipseId, true);
+    let state = useEditorStore.getState();
+    expect(state.selectedNodeIds).toEqual([rectId, ellipseId]);
+
+    state.alignSelected("left");
+    state = useEditorStore.getState();
+    expect(state.document.nodes[rectId]?.transform.x).toBe(
+      state.document.nodes[ellipseId]?.transform.x,
+    );
+
+    state.groupSelected();
+    state = useEditorStore.getState();
+    const groupId = state.selectedNodeId!;
+    expect(state.document.nodes[groupId]?.type).toBe("group");
+    expect(state.selectedNodeIds).toEqual([groupId]);
+
+    state.ungroupSelected();
+    state = useEditorStore.getState();
+    expect(state.document.nodes[groupId]).toBeUndefined();
+    expect(state.selectedNodeIds).toEqual([rectId, ellipseId]);
+  });
+});
+
 const assetItem = (id: string, filename: string) => ({
   id,
   filename,

@@ -16,6 +16,7 @@ export type CommandType =
   | "CREATE_NODE"
   | "DELETE_NODE"
   | "UPDATE_NODE"
+  | "UPDATE_NODES"
   | "MOVE_NODE"
   | "RESIZE_NODE"
   | "ROTATE_NODE"
@@ -34,6 +35,7 @@ export interface CommandPayloadMap {
   CREATE_NODE: { parentId: PageId | NodeId; node: Node; index?: number };
   DELETE_NODE: { nodeId: NodeId };
   UPDATE_NODE: { nodeId: NodeId; patch: NodePatch };
+  UPDATE_NODES: { updates: Array<{ nodeId: NodeId; patch: NodePatch }> };
   MOVE_NODE: { nodeId: NodeId; newParentId: PageId | NodeId; index?: number };
   RESIZE_NODE: { nodeId: NodeId; width: number; height: number };
   ROTATE_NODE: { nodeId: NodeId; rotation: number };

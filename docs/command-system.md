@@ -49,6 +49,11 @@ Snapshots are intentionally simple and reliable for the first version. Future
 versions can replace them with compact structural patches or inverse commands
 without changing the public command contract.
 
+`UPDATE_NODES` applies a validated list of node patches atomically. The editor
+uses it for multi-selection movement, alignment, and distribution so one user
+gesture produces one undo/redo history entry instead of a separate entry per
+element.
+
 ## Why AI Cannot Edit JSON Directly
 
 Direct JSON editing could create orphan nodes, invalid assets, broken template

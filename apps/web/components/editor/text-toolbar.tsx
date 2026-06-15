@@ -5,6 +5,7 @@ import { useEditorStore } from "../../lib/editor-store";
 const fonts = ["Arial", "Inter", "Georgia", "Times New Roman", "Courier New"];
 
 export function TextToolbar() {
+  const selectedNodeIds = useEditorStore((state) => state.selectedNodeIds);
   const node = useEditorStore((state) =>
     state.selectedNodeId
       ? state.document.nodes[state.selectedNodeId]
@@ -12,7 +13,7 @@ export function TextToolbar() {
   );
   const updateTextStyle = useEditorStore((state) => state.updateTextStyle);
   const updateFillColor = useEditorStore((state) => state.updateFillColor);
-  if (node?.type !== "text") return null;
+  if (selectedNodeIds.length !== 1 || node?.type !== "text") return null;
   const color =
     node.style.fill?.type === "solid" ? node.style.fill.color : "#18181b";
 

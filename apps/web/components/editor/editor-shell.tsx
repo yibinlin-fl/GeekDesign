@@ -386,8 +386,8 @@ function PanelContent({
           return (
             <button
               key={node.id}
-              className={`flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs transition ${store.selectedNodeId === node.id ? "border-violet-200 bg-violet-50 text-violet-800" : "border-transparent hover:bg-zinc-50"}`}
-              onClick={() => store.selectNode(node.id)}
+              className={`flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs transition ${store.selectedNodeIds.includes(node.id) ? "border-violet-200 bg-violet-50 text-violet-800" : "border-transparent hover:bg-zinc-50"}`}
+              onClick={(event) => store.selectNode(node.id, event.shiftKey)}
             >
               <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-zinc-100 text-zinc-500">
                 <Icon

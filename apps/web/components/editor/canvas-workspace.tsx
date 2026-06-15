@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { localAssetFromFile } from "../../lib/assets";
 import { useEditorStore } from "../../lib/editor-store";
 import { CanvasStage } from "./canvas-stage";
+import { ManipulationToolbar } from "./manipulation-toolbar";
 import { PagesPanel } from "./pages-panel";
 import { TextToolbar } from "./text-toolbar";
 
@@ -16,6 +17,7 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
   const document = useEditorStore((state) => state.document);
   const currentPageId = useEditorStore((state) => state.currentPageId);
   const zoom = useEditorStore((state) => state.zoom);
+  const showGrid = useEditorStore((state) => state.showGrid);
   const setZoom = useEditorStore((state) => state.setZoom);
   const insertAsset = useEditorStore((state) => state.insertAsset);
 
@@ -65,6 +67,30 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
       ) {
         event.preventDefault();
         store.duplicateSelected();
+      } else if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "c"
+      ) {
+        event.preventDefault();
+        store.copySelected();
+      } else if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "x"
+      ) {
+        event.preventDefault();
+        store.cutSelected();
+      } else if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "v"
+      ) {
+        event.preventDefault();
+        store.pasteClipboard();
+      } else if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "g"
+      ) {
+        event.preventDefault();
+        event.shiftKey ? store.ungroupSelected() : store.groupSelected();
       } else if (
         (event.ctrlKey || event.metaKey) &&
         ["+", "="].includes(event.key)
@@ -131,6 +157,7 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
     <section className="flex h-full min-w-0 overflow-hidden bg-[#ececf0]">
       <PagesPanel />
       <div className="relative min-w-0 flex-1 overflow-hidden">
+        <ManipulationToolbar />
         <TextToolbar />
         <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
           <ZoomButton label="Zoom out" onClick={() => setZoom(zoom - 0.1)}>
@@ -150,7 +177,7 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
         </div>
         <div
           ref={viewportRef}
-          className={`canvas-grid h-full overflow-auto ${spacePressed ? "cursor-grab" : ""}`}
+          className={`${showGrid ? "canvas-grid" : "bg-[#ececf0]"} h-full overflow-auto ${spacePressed ? "cursor-grab" : ""}`}
           data-testid="canvas-viewport"
           onPointerDownCapture={(event) => {
             if (spacePressed) {

@@ -126,6 +126,11 @@ export class CommandExecutor {
       case "UPDATE_NODE":
         graph.updateNode(command.payload.nodeId, command.payload.patch);
         return graph;
+      case "UPDATE_NODES":
+        command.payload.updates.forEach(({ nodeId, patch }) =>
+          graph.updateNode(nodeId, patch),
+        );
+        return graph;
       case "MOVE_NODE":
         graph.moveNode(
           command.payload.nodeId,
@@ -247,6 +252,23 @@ export class CommandExecutor {
     const groupIndex =
       command.payload.index ??
       Math.min(...sortedIds.map((nodeId) => siblingIds.indexOf(nodeId)));
+    const bounds = nodes.reduce(
+      (result, node) => ({
+        left: Math.min(result.left, node.transform.x),
+        top: Math.min(result.top, node.transform.y),
+        right: Math.max(result.right, node.transform.x + node.transform.width),
+        bottom: Math.max(
+          result.bottom,
+          node.transform.y + node.transform.height,
+        ),
+      }),
+      {
+        left: Number.POSITIVE_INFINITY,
+        top: Number.POSITIVE_INFINITY,
+        right: Number.NEGATIVE_INFINITY,
+        bottom: Number.NEGATIVE_INFINITY,
+      },
+    );
 
     graph.addNode(
       parentId,
@@ -254,12 +276,25 @@ export class CommandExecutor {
         id: command.payload.groupId,
         parentId,
         ...(command.payload.name ? { name: command.payload.name } : {}),
+        transform: {
+          x: bounds.left,
+          y: bounds.top,
+          width: bounds.right - bounds.left,
+          height: bounds.bottom - bounds.top,
+        },
       }),
       groupIndex,
     );
-    sortedIds.forEach((nodeId) =>
-      graph.moveNode(nodeId, command.payload.groupId),
-    );
+    sortedIds.forEach((nodeId) => {
+      const node = graph.getNode(nodeId)!;
+      graph.moveNode(nodeId, command.payload.groupId);
+      graph.updateNode(nodeId, {
+        transform: {
+          x: node.transform.x - bounds.left,
+          y: node.transform.y - bounds.top,
+        },
+      });
+    });
   }
 
   private ungroupNodes(graph: SceneGraph, groupId: string): void {
@@ -271,9 +306,16 @@ export class CommandExecutor {
       .getChildren(parentId)
       .findIndex((node) => node.id === groupId);
     const childIds = group.children;
-    childIds.forEach((nodeId, index) =>
-      graph.moveNode(nodeId, parentId, groupIndex + index),
-    );
+    childIds.forEach((nodeId, index) => {
+      const child = graph.getNode(nodeId)!;
+      graph.moveNode(nodeId, parentId, groupIndex + index);
+      graph.updateNode(nodeId, {
+        transform: {
+          x: child.transform.x + group.transform.x,
+          y: child.transform.y + group.transform.y,
+        },
+      });
+    });
     graph.removeNode(groupId);
   }
 

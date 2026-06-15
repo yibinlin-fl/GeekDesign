@@ -180,3 +180,53 @@ test("creates, switches, duplicates, and deletes pages", async ({ page }) => {
   await page.getByRole("button", { name: "Delete page 2" }).click();
   await expect(page.getByTestId("page-card")).toHaveCount(2);
 });
+
+test("multi-selects, aligns, groups, and ungroups elements", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Add rectangle" }).click();
+  await page.getByRole("button", { name: "Add ellipse" }).click();
+
+  await page
+    .getByRole("button", { name: "Rectangle rect" })
+    .click({ modifiers: ["Shift"] });
+  await expect(page.getByTestId("multi-selection-box")).toHaveAttribute(
+    "data-count",
+    "2",
+  );
+  const multiResize = page.getByRole("button", {
+    name: "Resize multi-selection",
+  });
+  const multiResizeBox = await multiResize.boundingBox();
+  if (!multiResizeBox) throw new Error("Multi-selection resize is not visible");
+  await page.mouse.move(multiResizeBox.x + 4, multiResizeBox.y + 4);
+  await page.mouse.down();
+  await page.mouse.move(multiResizeBox.x + 44, multiResizeBox.y + 34, {
+    steps: 5,
+  });
+  await page.mouse.up();
+
+  await page.getByRole("button", { name: "Align left" }).click();
+  await page
+    .getByRole("button", { name: "Group selection", exact: true })
+    .click();
+  await expect(page.getByTestId("layers-list")).toContainText("Group");
+
+  await page
+    .getByRole("button", { name: "Ungroup selection", exact: true })
+    .click();
+  await expect(page.getByTestId("multi-selection-box")).toHaveAttribute(
+    "data-count",
+    "2",
+  );
+
+  await page.keyboard.press("Control+c");
+  await page.keyboard.press("Control+v");
+  await expect(page.getByTestId("layers-list").getByRole("button")).toHaveCount(
+    4,
+  );
+  await page.getByRole("button", { name: "Toggle snap to grid" }).click();
+  await expect(
+    page.getByRole("button", { name: "Toggle snap to grid" }),
+  ).toContainText("on");
+});

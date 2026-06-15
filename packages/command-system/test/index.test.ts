@@ -250,6 +250,7 @@ describe("CommandExecutor", () => {
   });
 
   it("groups and ungroups sibling nodes", () => {
+    const before = executor.toDocument();
     executor.execute(
       createCommand({
         ...context,
@@ -280,6 +281,37 @@ describe("CommandExecutor", () => {
         .getChildren("page_1")
         .map((node) => node.id),
     ).toEqual(["title", "shape"]);
+    expect(executor.toDocument().nodes.title?.transform).toMatchObject(
+      before.nodes.title!.transform,
+    );
+    expect(executor.toDocument().nodes.shape?.transform).toMatchObject(
+      before.nodes.shape!.transform,
+    );
+  });
+
+  it("updates multiple nodes as one history entry", () => {
+    const before = executor.toDocument();
+    executor.execute(
+      createCommand({
+        ...context,
+        source: "user",
+        type: "UPDATE_NODES",
+        payload: {
+          updates: [
+            { nodeId: "title", patch: { transform: { x: 50 } } },
+            { nodeId: "shape", patch: { transform: { x: 50 } } },
+          ],
+        },
+      }),
+    );
+
+    expect(executor.getHistory()).toHaveLength(1);
+    expect(executor.toDocument().nodes.title?.transform.x).toBe(50);
+    expect(executor.toDocument().nodes.shape?.transform.x).toBe(50);
+    executor.undo();
+    expect(executor.toDocument().nodes.title?.transform.x).toBe(
+      before.nodes.title?.transform.x,
+    );
   });
 
   it("supports page commands and keeps resulting documents valid", () => {
