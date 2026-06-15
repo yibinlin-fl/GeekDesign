@@ -53,34 +53,36 @@ This is intentionally a basic server-side compatibility guard. The TypeScript
 
 ## Endpoints
 
-| Method   | Path                                 | Purpose                                |
-| -------- | ------------------------------------ | -------------------------------------- |
-| GET      | `/health`                            | Service health                         |
-| POST     | `/api/users/register`                | Register and issue a JWT               |
-| POST     | `/api/users/login`                   | Login and issue a JWT                  |
-| GET      | `/api/users/me`                      | Read the current user                  |
-| POST/GET | `/api/projects`                      | Create or list projects                |
-| GET/PUT  | `/api/projects/{id}`                 | Load or save a project                 |
-| PATCH    | `/api/projects/{id}/rename`          | Rename an owned project                |
-| POST     | `/api/projects/{id}/duplicate`       | Duplicate an owned project             |
-| DELETE   | `/api/projects/{id}`                 | Soft delete an owned project           |
-| POST     | `/api/projects/{id}/autosave`        | Save and snapshot previous document    |
-| POST     | `/api/projects/{id}/versions`        | Save an immutable document version     |
-| GET      | `/api/projects/{id}/versions`        | List immutable versions                |
-| POST     | `/api/projects/{id}/versions/{vid}/restore` | Restore a version               |
-| POST     | `/api/projects/{id}/share`           | Enable or revoke a read-only link      |
-| GET      | `/api/shares/{token}`                | Read a shared project without editing  |
-| GET      | `/api/template-categories`           | List template categories               |
-| GET      | `/api/templates`                     | List templates                         |
-| GET      | `/api/templates/{id}`                | Load a template                        |
-| POST     | `/api/templates/{id}/create-project` | Fill variables and create a project    |
-| POST     | `/api/assets/upload`                 | Validate and persist an uploaded image |
-| GET      | `/api/assets`                        | List the current user's image library  |
-| GET      | `/api/assets/{id}`                   | Load owned asset metadata              |
-| DELETE   | `/api/assets/{id}`                   | Delete an owned asset and thumbnail    |
-| POST     | `/api/exports/png`                   | Queue a PNG export                     |
-| POST     | `/api/exports/pdf`                   | Queue a PDF export                     |
-| GET      | `/api/exports/{task_id}`             | Read export status and download URL    |
+| Method   | Path                                        | Purpose                                   |
+| -------- | ------------------------------------------- | ----------------------------------------- |
+| GET      | `/health`                                   | Service health                            |
+| POST     | `/api/users/register`                       | Register and issue a JWT                  |
+| POST     | `/api/users/login`                          | Login and issue a JWT                     |
+| GET      | `/api/users/me`                             | Read the current user                     |
+| POST/GET | `/api/projects`                             | Create or list projects                   |
+| GET/PUT  | `/api/projects/{id}`                        | Load or save a project                    |
+| PATCH    | `/api/projects/{id}/rename`                 | Rename an owned project                   |
+| POST     | `/api/projects/{id}/duplicate`              | Duplicate an owned project                |
+| DELETE   | `/api/projects/{id}`                        | Soft delete an owned project              |
+| POST     | `/api/projects/{id}/autosave`               | Save and snapshot previous document       |
+| POST     | `/api/projects/{id}/versions`               | Save an immutable document version        |
+| GET      | `/api/projects/{id}/versions`               | List immutable versions                   |
+| POST     | `/api/projects/{id}/versions/{vid}/restore` | Restore a version                         |
+| POST     | `/api/projects/{id}/share`                  | Enable or revoke a read-only link         |
+| GET      | `/api/shares/{token}`                       | Read a shared project without editing     |
+| GET      | `/api/template-categories`                  | List template categories                  |
+| GET      | `/api/templates`                            | List templates                            |
+| GET      | `/api/templates/{id}`                       | Load a template                           |
+| POST     | `/api/templates/{id}/create-project`        | Fill variables and create a project       |
+| POST     | `/api/assets/upload`                        | Validate and persist an uploaded image    |
+| GET      | `/api/assets`                               | List the current user's image library     |
+| GET      | `/api/assets/{id}`                          | Load owned asset metadata                 |
+| DELETE   | `/api/assets/{id}`                          | Delete an owned asset and thumbnail       |
+| POST     | `/api/exports/png`                          | Queue a PNG export                        |
+| POST     | `/api/exports/pdf`                          | Queue a PDF export                        |
+| POST     | `/api/pptx/import`                          | Import an editable PPTX as a project      |
+| GET      | `/api/pptx/export/{project_id}`             | Download supported nodes as editable PPTX |
+| GET      | `/api/exports/{task_id}`                    | Read export status and download URL       |
 
 The asset service accepts PNG, JPEG, WebP, and SVG images up to 10 MB. Raster
 content is decoded to verify the claimed MIME type and generate a WebP thumbnail.

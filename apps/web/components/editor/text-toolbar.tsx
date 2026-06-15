@@ -12,11 +12,22 @@ export function TextToolbar() {
       : undefined,
   );
   const updateTextStyle = useEditorStore((state) => state.updateTextStyle);
+  const applyRichTextStyle = useEditorStore(
+    (state) => state.applyRichTextStyle,
+  );
+  const textSelection = useEditorStore((state) => state.textSelection);
   const toggleBullets = useEditorStore((state) => state.toggleBullets);
   const updateFillColor = useEditorStore((state) => state.updateFillColor);
   if (selectedNodeIds.length !== 1 || node?.type !== "text") return null;
   const color =
     node.style.fill?.type === "solid" ? node.style.fill.color : "#18181b";
+  const hasRange = Boolean(
+    textSelection && textSelection.start !== textSelection.end,
+  );
+  const format = (
+    local: Parameters<typeof applyRichTextStyle>[0],
+    global: Parameters<typeof updateTextStyle>[0],
+  ) => (hasRange ? applyRichTextStyle(local) : updateTextStyle(global));
 
   return (
     <div
@@ -27,7 +38,10 @@ export function TextToolbar() {
         className="h-8 w-28 rounded-lg bg-zinc-50 px-2 text-xs font-bold text-zinc-700 outline-none"
         value={node.text.fontFamily}
         onChange={(event) =>
-          updateTextStyle({ fontFamily: event.target.value })
+          format(
+            { fontFamily: event.target.value },
+            { fontFamily: event.target.value },
+          )
         }
         aria-label="Toolbar font family"
       >
@@ -43,7 +57,10 @@ export function TextToolbar() {
         min="1"
         value={node.text.fontSize}
         onChange={(event) =>
-          updateTextStyle({ fontSize: Number(event.target.value) })
+          format(
+            { fontSize: Number(event.target.value) },
+            { fontSize: Number(event.target.value) },
+          )
         }
         aria-label="Toolbar font size"
       />
@@ -51,12 +68,34 @@ export function TextToolbar() {
         label="Bold"
         active={node.text.fontWeight >= 700}
         onClick={() =>
-          updateTextStyle({
-            fontWeight: node.text.fontWeight >= 700 ? 400 : 700,
-          })
+          format(
+            { fontWeight: node.text.fontWeight >= 700 ? 400 : 700 },
+            { fontWeight: node.text.fontWeight >= 700 ? 400 : 700 },
+          )
         }
       >
         B
+      </ToolbarButton>
+      <ToolbarButton
+        label="Italic"
+        active={false}
+        onClick={() => applyRichTextStyle({ italic: true })}
+      >
+        I
+      </ToolbarButton>
+      <ToolbarButton
+        label="Underline"
+        active={false}
+        onClick={() => applyRichTextStyle({ underline: true })}
+      >
+        U
+      </ToolbarButton>
+      <ToolbarButton
+        label="Strikethrough"
+        active={false}
+        onClick={() => applyRichTextStyle({ strikeThrough: true })}
+      >
+        S
       </ToolbarButton>
       <span className="mx-1 h-5 w-px bg-zinc-200" />
       {(["left", "center", "right", "justify"] as const).map((alignment) => (
@@ -91,7 +130,11 @@ export function TextToolbar() {
           className="size-5 cursor-pointer rounded border-0 bg-transparent p-0"
           type="color"
           value={color}
-          onChange={(event) => updateFillColor(event.target.value)}
+          onChange={(event) =>
+            hasRange
+              ? applyRichTextStyle({ color: event.target.value })
+              : updateFillColor(event.target.value)
+          }
           aria-label="Toolbar text color"
         />
       </label>
@@ -118,6 +161,7 @@ function ToolbarButton({
           : "text-zinc-500 hover:bg-zinc-100"
       }`}
       onClick={onClick}
+      onMouseDown={(event) => event.preventDefault()}
       aria-label={label}
       aria-pressed={active}
     >

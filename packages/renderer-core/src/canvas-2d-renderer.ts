@@ -9,6 +9,7 @@ import {
   type Node,
   type Paint,
   type RectNode,
+  type RichTextRun,
   type SvgNode,
   type TableNode,
   type ChartNode,
@@ -24,6 +25,11 @@ import type {
   Renderer,
   Viewport,
 } from "./types";
+
+interface TextSegment {
+  text: string;
+  style: Partial<RichTextRun>;
+}
 import { RendererError } from "./types";
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -165,7 +171,6 @@ export class Canvas2DRenderer implements Renderer {
       if (font) void this.fontLoader?.load(font);
     }
 
-    context.font = `${node.text.fontWeight} ${node.text.fontSize}px "${node.text.fontFamily}"`;
     (
       context as CanvasRenderingContext2D & { letterSpacing: string }
     ).letterSpacing = `${node.text.letterSpacing}px`;
@@ -191,35 +196,81 @@ export class Canvas2DRenderer implements Renderer {
           ? `${index + 1}. `
           : "• "
         : "";
-      const renderedLine = `${prefix}${line}`;
-      const x =
+      const segments = textSegments(node, contentOffset, line);
+      if (prefix)
+        segments.unshift({
+          text: prefix,
+          style: {},
+        });
+      const totalWidth = segments.reduce(
+        (width, segment) =>
+          width + this.measureTextSegment(node, segment.text, segment.style),
+        0,
+      );
+      let x =
         node.text.textAlign === "center"
-          ? node.transform.width / 2
+          ? (node.transform.width - totalWidth) / 2
           : node.text.textAlign === "right"
-            ? node.transform.width
+            ? node.transform.width - totalWidth
             : 0;
-      if (fill)
-        context.fillText(
-          renderedLine,
-          x,
-          index * lineHeight,
-          node.transform.width,
+      segments.forEach((segment) => {
+        const width = this.measureTextSegment(
+          node,
+          segment.text,
+          segment.style,
         );
-      if (node.style.stroke) {
-        this.applyStroke(
-          node.style.stroke,
-          node.transform.width,
-          node.transform.height,
-        );
-        context.strokeText(
-          renderedLine,
-          x,
-          index * lineHeight,
-          node.transform.width,
-        );
-      }
+        this.applyTextSegmentStyle(node, segment.style, fill);
+        if (fill || segment.style.color)
+          context.fillText(segment.text, x, index * lineHeight);
+        if (node.style.stroke) {
+          this.applyStroke(
+            node.style.stroke,
+            node.transform.width,
+            node.transform.height,
+          );
+          context.strokeText(segment.text, x, index * lineHeight);
+        }
+        if (segment.style.underline || segment.style.strikeThrough) {
+          context.beginPath();
+          const fontSize = segment.style.fontSize ?? node.text.fontSize;
+          const decorationY =
+            index * lineHeight +
+            (segment.style.underline ? fontSize * 1.05 : fontSize * 0.52);
+          context.moveTo(x, decorationY);
+          context.lineTo(x + width, decorationY);
+          context.stroke();
+        }
+        x += width;
+      });
       contentOffset += line.length + 1;
     });
+  }
+
+  private applyTextSegmentStyle(
+    node: TextNode,
+    style: Partial<RichTextRun>,
+    fallbackFill: string | CanvasGradient | CanvasPattern | undefined,
+  ): void {
+    const context = this.requireContext();
+    const fontStyle = style.italic ? "italic " : "";
+    context.font = `${fontStyle}${style.fontWeight ?? node.text.fontWeight} ${
+      style.fontSize ?? node.text.fontSize
+    }px "${style.fontFamily ?? node.text.fontFamily}"`;
+    if (style.color) context.fillStyle = style.color;
+    else if (fallbackFill) context.fillStyle = fallbackFill;
+  }
+
+  private measureTextSegment(
+    node: TextNode,
+    text: string,
+    style: Partial<RichTextRun>,
+  ): number {
+    const context = this.requireContext();
+    this.applyTextSegmentStyle(node, style, undefined);
+    return (
+      context.measureText(text).width +
+      Math.max(0, text.length - 1) * node.text.letterSpacing
+    );
   }
 
   renderImageNode(node: ImageNode): void {
@@ -626,4 +677,29 @@ export class Canvas2DRenderer implements Renderer {
       throw new RendererError("Canvas 2D context is not available");
     return this.context;
   }
+}
+
+function textSegments(
+  node: TextNode,
+  lineStart: number,
+  line: string,
+): TextSegment[] {
+  const lineEnd = lineStart + line.length;
+  const boundaries = new Set<number>([lineStart, lineEnd]);
+  (node.text.runs ?? []).forEach((run) => {
+    if (run.end <= lineStart || run.start >= lineEnd) return;
+    boundaries.add(Math.max(lineStart, run.start));
+    boundaries.add(Math.min(lineEnd, run.end));
+  });
+  const ordered = [...boundaries].sort((left, right) => left - right);
+  return ordered.slice(0, -1).map((start, index) => {
+    const end = ordered[index + 1]!;
+    const style = (node.text.runs ?? []).find(
+      (run) => run.start <= start && run.end >= end,
+    );
+    return {
+      text: line.slice(start - lineStart, end - lineStart),
+      style: style ?? {},
+    };
+  });
 }

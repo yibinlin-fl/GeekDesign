@@ -197,7 +197,8 @@ feat(command): unify backend command execution and mcp coverage
 ## Later Stage: Rich Slide Content
 
 - [x] Extend Design Schema with rich text and text ranges
-- [ ] Add selection-based rich text editing and preserve ranges during typing
+- [x] Add selection-based rich text formatting and Canvas run rendering
+- [ ] Preserve rich-text ranges while inserting and deleting characters
 - [x] Add basic paragraph bullets
 - [ ] Add numbering, indentation, and text auto-fit controls
 - [ ] Add arrows, connectors, icons, editable SVG, and QR code nodes
@@ -226,9 +227,9 @@ feat(editor): add rich slide content and layout tools
 - [ ] Export all pages as multi-page PDF
 - [ ] Export high-resolution PNG per page
 - [ ] Export image-based PPTX first
-- [ ] Export editable PPTX for supported node types
+- [x] Export and import editable PPTX for supported text, image, shape, and line nodes
 - [ ] Define fallback rendering for unsupported effects
-- [ ] Add PPTX import research and compatibility matrix
+- [x] Add PPTX compatibility boundary and unsupported-shape diagnostics
 - [ ] Add batch export and ZIP packaging
 
 Suggested commit:

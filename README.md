@@ -41,6 +41,11 @@ The local API uses `apps/api/geekdesign.db` by default. PostgreSQL, Redis, and
 MinIO remain available for production-like development, but are not required
 to open and use the current editor.
 
+Registration and login are available at `/register` and `/login`. Authenticated
+users can import and export supported editable PPTX files from the editor
+toolbar. DeepSeek Agent setup is documented in
+[`docs/deepseek-setup.md`](docs/deepseek-setup.md).
+
 ### Docker development
 
 Start optional infrastructure:

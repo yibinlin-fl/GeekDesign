@@ -12,6 +12,8 @@ test("edits through commands, persists locally, and exposes export", async ({
   await expect(page.getByText("GeekDesign")).toBeVisible();
   await expect(page.getByRole("button", { name: "Export PNG" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Export PDF" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Import PPTX" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export PPTX" })).toBeVisible();
 
   await page.getByRole("button", { name: "Add text" }).click();
   await expect(page.getByTestId("layers-list")).toContainText("New text");
@@ -36,6 +38,34 @@ test("edits through commands, persists locally, and exposes export", async ({
   await expect(page.getByTestId("layers-list")).toContainText(
     "Playwright title",
   );
+});
+
+test("applies formatting to an inline text selection", async ({ page }) => {
+  await page.getByRole("button", { name: "Add text" }).click();
+  const canvas = page.getByLabel("Design canvas");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Design canvas is not visible");
+  const scale = box.width / 800;
+  await canvas.dblclick({
+    position: { x: 160 * scale, y: 120 * scale },
+  });
+  const editor = page.getByLabel("Inline text editor");
+  await editor.evaluate((element: HTMLTextAreaElement) => {
+    element.setSelectionRange(0, 3);
+    element.dispatchEvent(new Event("select", { bubbles: true }));
+  });
+  await page.getByRole("button", { name: "Bold" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+
+  const runs = await page.evaluate(() => {
+    const document = JSON.parse(
+      localStorage.getItem("geekdesign.editor.document") ?? "{}",
+    ) as {
+      nodes: Record<string, { text?: { runs?: unknown[] } }>;
+    };
+    return Object.values(document.nodes)[0]?.text?.runs;
+  });
+  expect(runs).toEqual([{ start: 0, end: 3, fontWeight: 700 }]);
 });
 
 test("drags an element with one undoable command", async ({ page }) => {

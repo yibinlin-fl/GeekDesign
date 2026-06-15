@@ -241,6 +241,33 @@ describe("typography", () => {
       : undefined;
     expect(selected?.type === "text" && selected.text.paragraphs).toEqual([]);
   });
+
+  it("applies rich text formatting only to the active selection", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addText();
+    store.updateText("Hello world");
+    useEditorStore.getState().setTextSelection({ start: 0, end: 5 });
+    useEditorStore.getState().applyRichTextStyle({
+      fontWeight: 700,
+      color: "#ff0000",
+      underline: true,
+    });
+
+    const state = useEditorStore.getState();
+    const selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.type === "text" && selected.text.runs).toEqual([
+      {
+        start: 0,
+        end: 5,
+        fontWeight: 700,
+        color: "#ff0000",
+        underline: true,
+      },
+    ]);
+  });
 });
 
 describe("multi-page editor", () => {

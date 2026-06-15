@@ -30,8 +30,10 @@ formatting. Optional `paragraphs` target ranges for bullets, indentation, and
 spacing. Range validation prevents references outside canonical content.
 
 The next editor milestone must preserve ranges while inserting and deleting
-characters and expose selection-based formatting in the inline text editor.
-Until then, replacing the complete text content intentionally clears existing
+characters. The inline text editor now reports its active character selection;
+font family, font size, bold, italic, underline, strike-through, and color can
+be written as local `runs`. Canvas 2D renders those runs as separately styled
+segments. Replacing the complete text content intentionally clears existing
 range formatting so stale ranges can never corrupt a document.
 
 ## Themes And Layouts
@@ -53,14 +55,18 @@ temporary render frames and never mutates the Scene Graph or Design Document.
 
 ## PPTX Pipeline
 
-PPTX export should be implemented in two levels:
+PPTX export is implemented in two levels:
 
-1. Image-based export for complete visual fidelity.
-2. Editable export for supported text, image, shape, table, and chart nodes.
+1. PDF/PNG exports for complete visual fidelity.
+2. Editable PPTX export/import for supported text, image, rectangle, ellipse,
+   line, and multi-page structures.
 
-Unsupported effects must use documented fallback rendering. PPTX import should
-parse OOXML into Design Schema nodes and preserve unsupported source fragments
-only as metadata for round-trip diagnostics.
+The editable adapter uses `python-pptx`. Imported pictures are embedded as data
+URI assets so the new project remains self-contained. Unsupported SmartArt,
+charts, tables, masters, animations, complex fills, clipping, and effects are
+counted in `metadata.custom.pptxImport.unsupportedShapes`; they are not silently
+claimed as editable. The Web Editor exposes authenticated Import PPTX and Export
+PPTX buttons.
 
 ## Rendering Performance
 

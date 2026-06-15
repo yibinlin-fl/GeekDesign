@@ -29,6 +29,7 @@ const createMockCanvas = (): MockCanvas => {
     "fillRect",
     "fillText",
     "lineTo",
+    "measureText",
     "moveTo",
     "rect",
     "restore",
@@ -46,6 +47,9 @@ const createMockCanvas = (): MockCanvas => {
   const methods = Object.fromEntries(
     methodNames.map((name) => [name, vi.fn()]),
   ) as Record<string, ContextMethod>;
+  methods.measureText = vi.fn((text: string) => ({
+    width: text.length * 10,
+  })) as ContextMethod;
   const gradient = { addColorStop: vi.fn() };
   methods.createLinearGradient = vi.fn(() => gradient) as ContextMethod;
   methods.createRadialGradient = vi.fn(() => gradient) as ContextMethod;
@@ -141,12 +145,22 @@ describe("Canvas2DRenderer", () => {
   it("renders text content", () => {
     renderer.renderDocument(buildDocument(), mock.canvas);
 
-    expect(mock.methods.fillText).toHaveBeenCalledWith(
-      "Hello Renderer",
-      0,
-      0,
-      250,
-    );
+    expect(mock.methods.fillText).toHaveBeenCalledWith("Hello Renderer", 0, 0);
+  });
+
+  it("renders rich text runs as separately styled segments", () => {
+    const document = buildDocument();
+    const title = document.nodes.title;
+    if (title?.type === "text") {
+      title.text.runs = [
+        { start: 0, end: 5, fontWeight: 700, color: "#ff0000" },
+      ];
+    }
+
+    renderer.renderDocument(document, mock.canvas);
+
+    expect(mock.methods.fillText).toHaveBeenCalledWith("Hello", 0, 0);
+    expect(mock.methods.fillText).toHaveBeenCalledWith(" Renderer", 50, 0);
   });
 
   it("renders lightweight transform overrides without modifying the document", () => {

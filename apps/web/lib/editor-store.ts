@@ -25,6 +25,7 @@ import {
   type Page,
   type Paint,
   type PageTransition,
+  type RichTextRun,
   type TableNode,
   type SlideLayout,
   type TextNode,
@@ -70,6 +71,7 @@ interface EditorState {
   snapToGrid: boolean;
   cropMode: boolean;
   animationPreviewProgress?: number;
+  textSelection?: { start: number; end: number };
   newDesign: () => void;
   selectPage: (pageId: string) => void;
   addPage: () => void;
@@ -101,6 +103,8 @@ interface EditorState {
   updateText: (content: string) => void;
   updateTextNode: (nodeId: string, content: string) => void;
   updateTextStyle: (text: Partial<TextNode["text"]>) => void;
+  applyRichTextStyle: (style: Omit<RichTextRun, "start" | "end">) => void;
+  setTextSelection: (selection?: { start: number; end: number }) => void;
   toggleBullets: () => void;
   updateFontSize: (fontSize: number) => void;
   updateFillColor: (color: string) => void;
@@ -173,6 +177,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   snapToGrid: false,
   cropMode: false,
   animationPreviewProgress: undefined,
+  textSelection: undefined,
   newDesign: () => {
     executor = new CommandExecutor({
       sceneGraph: SceneGraph.fromDocument(createBlankDocument()),
@@ -601,6 +606,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           selectedNodeId: undefined,
           selectedNodeIds: [],
           cropMode: false,
+          textSelection: undefined,
         };
       if (!additive)
         return {
@@ -609,6 +615,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           cropMode:
             state.cropMode &&
             state.document.nodes[selectedNodeId]?.type === "image",
+          textSelection: undefined,
         };
       const selectedNodeIds = state.selectedNodeIds.includes(selectedNodeId)
         ? state.selectedNodeIds.filter((nodeId) => nodeId !== selectedNodeId)
@@ -617,6 +624,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         selectedNodeId: selectedNodeIds.at(-1),
         selectedNodeIds,
         cropMode: false,
+        textSelection: undefined,
       };
     }),
   selectNodes: (selectedNodeIds) =>
@@ -651,6 +659,45 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     );
     set(snapshot());
   },
+  applyRichTextStyle: (style) => {
+    const nodeId = get().selectedNodeId;
+    const selection = get().textSelection;
+    const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
+    if (
+      !nodeId ||
+      node?.type !== "text" ||
+      !selection ||
+      selection.start === selection.end
+    )
+      return;
+    const start = Math.max(
+      0,
+      Math.min(node.text.content.length, selection.start, selection.end),
+    );
+    const end = Math.max(
+      start,
+      Math.min(
+        node.text.content.length,
+        Math.max(selection.start, selection.end),
+      ),
+    );
+    if (start === end) return;
+    const runs = mergeRichTextRuns(node.text.runs ?? [], {
+      start,
+      end,
+      ...style,
+    });
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_NODE",
+        payload: { nodeId, patch: { text: { runs } } },
+      }),
+    );
+    set(snapshot());
+  },
+  setTextSelection: (textSelection) => set({ textSelection }),
   toggleBullets: () => {
     const nodeId = get().selectedNodeId;
     const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
@@ -1295,3 +1342,22 @@ export const getSelectedNode = (
   document: DesignDocument,
   nodeId?: string,
 ): Node | undefined => (nodeId ? document.nodes[nodeId] : undefined);
+
+function mergeRichTextRuns(
+  current: RichTextRun[],
+  applied: RichTextRun,
+): RichTextRun[] {
+  const result: RichTextRun[] = [];
+  current.forEach((run) => {
+    if (run.end <= applied.start || run.start >= applied.end) {
+      result.push(run);
+      return;
+    }
+    if (run.start < applied.start) result.push({ ...run, end: applied.start });
+    if (run.end > applied.end) result.push({ ...run, start: applied.end });
+  });
+  result.push(applied);
+  return result
+    .filter((run) => run.start < run.end)
+    .sort((left, right) => left.start - right.start);
+}

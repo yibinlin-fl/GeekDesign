@@ -52,7 +52,7 @@ test("adds a local image when the API is unavailable", async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
 
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.getByLabel("Upload image").setInputFiles({
     name: "local-image.svg",
     mimeType: "image/svg+xml",
     buffer: Buffer.from(

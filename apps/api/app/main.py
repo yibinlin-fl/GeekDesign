@@ -11,6 +11,7 @@ from app.core.responses import success
 from app.modules.assets.router import router as assets_router
 from app.modules.commands.router import router as commands_router
 from app.modules.exports.router import router as exports_router
+from app.modules.pptx.router import router as pptx_router
 from app.modules.projects.router import router as projects_router
 from app.modules.projects.router import share_router
 from app.modules.templates.router import category_router
@@ -85,3 +86,4 @@ app.include_router(category_router, prefix=settings.api_prefix)
 app.include_router(templates_router, prefix=settings.api_prefix)
 app.include_router(assets_router, prefix=settings.api_prefix)
 app.include_router(exports_router, prefix=settings.api_prefix)
+app.include_router(pptx_router, prefix=settings.api_prefix)

@@ -106,6 +106,7 @@ export function CanvasStage() {
   const moveSelectionBy = useEditorStore((state) => state.moveSelectionBy);
   const resizeSelection = useEditorStore((state) => state.resizeSelection);
   const updateTextNode = useEditorStore((state) => state.updateTextNode);
+  const setTextSelection = useEditorStore((state) => state.setTextSelection);
   const updateImageCrop = useEditorStore((state) => state.updateImageCrop);
   const copySelected = useEditorStore((state) => state.copySelected);
   const cutSelected = useEditorStore((state) => state.cutSelected);
@@ -126,7 +127,11 @@ export function CanvasStage() {
       } else if (editing) {
         const previewDocument = structuredClone(document);
         const node = previewDocument.nodes[editing.nodeId];
-        if (node?.type === "text") node.text.content = "";
+        if (node?.type === "text") {
+          node.text.content = "";
+          node.text.runs = [];
+          node.text.paragraphs = [];
+        }
         renderPage(renderer, previewDocument, canvasRef.current, currentPageId);
       } else {
         renderPage(renderer, document, canvasRef.current, currentPageId);
@@ -200,6 +205,7 @@ export function CanvasStage() {
       initial: node.text.content,
       draft: node.text.content,
     });
+    setTextSelection({ start: 0, end: node.text.content.length });
   };
 
   const finishTextEditing = (commit: boolean) => {
@@ -532,6 +538,7 @@ export function CanvasStage() {
           }
           onCommit={() => finishTextEditing(true)}
           onCancel={() => finishTextEditing(false)}
+          onSelectionChange={setTextSelection}
         />
       ) : null}
       {contextMenu ? (
@@ -696,12 +703,14 @@ function InlineTextEditor({
   onChange,
   onCommit,
   onCancel,
+  onSelectionChange,
 }: {
   node: TextNode;
   value: string;
   onChange: (value: string) => void;
   onCommit: () => void;
   onCancel: () => void;
+  onSelectionChange: (selection: { start: number; end: number }) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -732,6 +741,12 @@ function InlineTextEditor({
       }}
       value={value}
       onChange={(event) => onChange(event.target.value)}
+      onSelect={(event) =>
+        onSelectionChange({
+          start: event.currentTarget.selectionStart,
+          end: event.currentTarget.selectionEnd,
+        })
+      }
       onBlur={onCommit}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
