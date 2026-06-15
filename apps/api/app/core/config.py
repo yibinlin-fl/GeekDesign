@@ -22,7 +22,11 @@ class Settings:
     cors_origins: tuple[str, ...] = tuple(
         origin.strip()
         for origin in os.getenv(
-            "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+            "CORS_ORIGINS",
+            (
+                "http://localhost:3000,http://127.0.0.1:3000,"
+                "http://localhost:3400,http://127.0.0.1:3400"
+            ),
         ).split(",")
         if origin.strip()
     )

@@ -1,18 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import type { DesignDocument } from "@geekdesign/design-schema";
+import { Canvas2DRenderer } from "@geekdesign/renderer-core";
+import { useRef, useState } from "react";
 
-import { API_URL } from "../../lib/assets";
-import { authHeaders } from "../../lib/auth";
+import { absoluteAssetUrl, API_URL } from "../../lib/assets";
+import { authHeaders, getAccessToken } from "../../lib/auth";
+import { BrowserImageCache } from "../../lib/browser-image-cache";
 import { useEditorStore } from "../../lib/editor-store";
-
-interface ExportTask {
-  id: string;
-  format: string;
-  status: "queued" | "processing" | "completed" | "failed";
-  result_url?: string | null;
-  error_message?: string | null;
-}
 
 interface ApiResponse<T> {
   data: T;
@@ -21,17 +16,9 @@ interface ApiResponse<T> {
 
 export function ExportControls() {
   const document = useEditorStore((state) => state.document);
-  const [task, setTask] = useState<ExportTask>();
   const [message, setMessage] = useState<string>();
-  const pollRef = useRef<ReturnType<typeof setInterval>>();
+  const [exportingPdf, setExportingPdf] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
-
-  useEffect(
-    () => () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    },
-    [],
-  );
 
   const exportPng = () => {
     const canvas = window.document.querySelector<HTMLCanvasElement>(
@@ -46,39 +33,24 @@ export function ExportControls() {
   };
 
   const exportPdf = async () => {
-    setMessage("Saving design for PDF export...");
+    setExportingPdf(true);
+    setMessage("Preparing all pages for PDF...");
     try {
-      const projectResponse = await fetch(`${API_URL}/api/projects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({
-          title: document.title,
-          document_json: document,
-        }),
-      });
-      if (!projectResponse.ok)
-        throw new Error("Unable to save design for export");
-      const project = (await projectResponse.json()) as ApiResponse<{
-        id: string;
-      }>;
-      const taskResponse = await fetch(`${API_URL}/api/exports/pdf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ project_id: project.data.id, scale: 1 }),
-      });
-      if (!taskResponse.ok) throw new Error("Unable to create PDF export");
-      const result = (await taskResponse.json()) as ApiResponse<ExportTask>;
-      setTask(result.data);
-      setMessage("PDF export queued");
-      startPolling(result.data.id);
+      await downloadDocumentPdf(document);
+      setMessage(`PDF downloaded (${document.pages.length} pages)`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "PDF export failed");
+    } finally {
+      setExportingPdf(false);
     }
   };
 
   const exportPptx = async () => {
     setMessage("Preparing editable PPTX...");
     try {
+      if (!getAccessToken()) {
+        throw new Error("Sign in first to export editable PPTX");
+      }
       const projectResponse = await fetch(`${API_URL}/api/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -87,7 +59,7 @@ export function ExportControls() {
           document_json: document,
         }),
       });
-      if (!projectResponse.ok) throw new Error("Sign in before exporting PPTX");
+      if (!projectResponse.ok) throw await apiError(projectResponse);
       const project = (await projectResponse.json()) as ApiResponse<{
         id: string;
       }>;
@@ -95,7 +67,7 @@ export function ExportControls() {
         `${API_URL}/api/pptx/export/${project.data.id}`,
         { headers: authHeaders() },
       );
-      if (!response.ok) throw new Error("Editable PPTX export failed");
+      if (!response.ok) throw await apiError(response);
       downloadBlob(await response.blob(), `${document.title}.pptx`);
       setMessage("Editable PPTX downloaded");
     } catch (error) {
@@ -122,48 +94,16 @@ export function ExportControls() {
     }
   };
 
-  const startPolling = (taskId: string) => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(() => {
-      void fetch(`${API_URL}/api/exports/${taskId}`, { headers: authHeaders() })
-        .then(async (response) => {
-          if (!response.ok) throw new Error("Unable to refresh export task");
-          return (await response.json()) as ApiResponse<ExportTask>;
-        })
-        .then((result) => {
-          setTask(result.data);
-          setMessage(`PDF export ${result.data.status}`);
-          if (
-            ["completed", "failed"].includes(result.data.status) &&
-            pollRef.current
-          ) {
-            clearInterval(pollRef.current);
-          }
-        })
-        .catch(() => {
-          if (pollRef.current) clearInterval(pollRef.current);
-        });
-    }, 1500);
-  };
-
   return (
     <div className="flex items-center gap-1.5">
       {message ? (
-        <span
-          className="max-w-32 truncate text-[10px] text-white/45"
+        <div
+          className="fixed right-4 top-16 z-[100] max-w-sm rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl"
           data-testid="export-status"
+          role="status"
         >
           {message}
-        </span>
-      ) : null}
-      {task?.status === "completed" && task.result_url ? (
-        <a
-          className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white"
-          href={`${API_URL}${task.result_url}`}
-          download
-        >
-          Download PDF
-        </a>
+        </div>
       ) : null}
       <button
         className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white/75 transition hover:bg-white/15 hover:text-white"
@@ -174,9 +114,9 @@ export function ExportControls() {
       <button
         className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-zinc-900 transition hover:bg-violet-50"
         onClick={() => void exportPdf()}
-        disabled={task?.status === "queued" || task?.status === "processing"}
+        disabled={exportingPdf}
       >
-        Export PDF
+        {exportingPdf ? "Preparing PDF..." : "Export PDF"}
       </button>
       <button
         className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white/75 transition hover:bg-white/15 hover:text-white"
@@ -200,6 +140,49 @@ export function ExportControls() {
       </button>
     </div>
   );
+}
+
+async function downloadDocumentPdf(document: DesignDocument): Promise<void> {
+  const exportDocument = structuredClone(document);
+  Object.values(exportDocument.assets).forEach((asset) => {
+    asset.uri = absoluteAssetUrl(asset.uri);
+  });
+
+  const imageCache = new BrowserImageCache(() => undefined);
+  await Promise.allSettled(
+    Object.values(exportDocument.assets).map((asset) => imageCache.load(asset)),
+  );
+
+  const canvas = window.document.createElement("canvas");
+  const renderer = new Canvas2DRenderer({ imageCache });
+  renderer.renderDocument(exportDocument, canvas);
+
+  const { jsPDF } = await import("jspdf");
+  const { width, height } = exportDocument.canvas;
+  const orientation = width >= height ? "landscape" : "portrait";
+  const pdf = new jsPDF({
+    orientation,
+    unit: "px",
+    format: [width, height],
+    hotfixes: ["px_scaling"],
+  });
+
+  exportDocument.pages.forEach((page, index) => {
+    if (index > 0) pdf.addPage([width, height], orientation);
+    renderer.renderPage(page.id);
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, width, height);
+  });
+
+  pdf.save(`${document.title}.pdf`);
+}
+
+async function apiError(response: Response): Promise<Error> {
+  try {
+    const body = (await response.json()) as { message?: string };
+    return new Error(body.message || `Request failed (${response.status})`);
+  } catch {
+    return new Error(`Request failed (${response.status})`);
+  }
 }
 
 function downloadBlob(blob: Blob, filename: string) {

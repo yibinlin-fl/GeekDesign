@@ -1,8 +1,8 @@
 # Export Service
 
-GeekDesign exports are asynchronous tasks so the same pipeline can later support
-high-resolution rendering, batches, presentation formats, retries, priorities,
-and paid export limits.
+GeekDesign has an immediate browser export path for daily editing and an
+asynchronous server path reserved for high-resolution rendering, batches,
+retries, priorities, and paid export limits.
 
 ## Pipeline
 
@@ -24,11 +24,15 @@ task. Task status and download URLs are read through `GET /api/exports/{task_id}
 ## Formats
 
 - PNG is immediately available in the editor through browser canvas download.
+- PDF is immediately exported in the editor as a multi-page raster PDF. It
+  renders every Design Document page through `renderer-core`, so it works
+  without Docker or a render worker.
 - PNG tasks are also modeled for future high-resolution and batch rendering.
-- PDF uses Playwright to open the server-only render page and print at the exact
-  design canvas dimensions.
-- PPTX is intentionally not implemented, but the task format and worker dispatch
-  boundaries allow it to be added without changing project storage.
+- The production server PDF route uses Playwright to open the server-only render
+  page and print at the exact design canvas dimensions once a task runner is
+  deployed.
+- Editable PPTX import and export are handled by the API and require sign-in so
+  project ownership can be enforced.
 
 ## Server Render Page
 
