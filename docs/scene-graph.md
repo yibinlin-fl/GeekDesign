@@ -39,14 +39,17 @@ the relevant children array while preserving all other sibling order.
 
 ## Bounding Boxes and Hit Testing
 
-The first bounding-box implementation uses node transforms and accumulated
-parent offsets. Rotation is intentionally reserved for a later rotated
-axis-aligned bounding-box implementation.
+Bounding boxes use composed 2D matrices, including nested group/frame
+translation, rotation, and scale. `getBoundingBox` transforms all four node
+corners and returns their world-space axis-aligned bounds.
 
 `hitTest` walks children in reverse stacking order, visiting nested children
-before their container. The first matching topmost node is returned. Normal hit
-testing ignores nodes that are hidden, fully transparent, or locked, and hidden
-ancestors suppress hits for their descendants.
+before their container. Points are transformed back into each node's local
+coordinate system, so rotated rectangles and ellipses are tested against their
+real geometry rather than only their axis-aligned bounds. The first matching
+topmost node is returned. Hidden, fully transparent, or locked ancestors
+suppress hits for their descendants. Clipped frames suppress descendant hits
+outside the frame.
 
 ## AI Element Tree Access
 

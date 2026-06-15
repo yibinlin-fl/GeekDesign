@@ -147,4 +147,17 @@ describe("Canvas2DRenderer", () => {
       250,
     );
   });
+
+  it("renders lightweight transform overrides without modifying the document", () => {
+    const document = buildDocument();
+    renderer.renderPreview(
+      document,
+      mock.canvas,
+      "page_1",
+      new Map([["rect", { ...document.nodes.rect!.transform, x: 250 }]]),
+    );
+
+    expect(mock.methods.translate).toHaveBeenCalledWith(250, 30);
+    expect(document.nodes.rect?.transform.x).toBe(20);
+  });
 });

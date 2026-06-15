@@ -25,6 +25,11 @@ technology does not require changing saved designs.
 Node traversal follows page, group, and frame child order. Transforms are
 applied recursively, while viewport zoom and pan are applied at page level.
 
+During pointer transforms, `renderPreview` accepts a small map of temporary
+node transforms. This keeps interaction preview state outside the Design
+Document and avoids cloning and validating a large document on every pointer
+move. The editor commits one Command only when the interaction ends.
+
 ## Canvas 2D Capabilities
 
 The first Canvas 2D renderer includes:
@@ -34,6 +39,7 @@ The first Canvas 2D renderer includes:
 - solid, linear-gradient, radial-gradient, and basic cached image paints
 - image caching and font loading extension interfaces
 - zoom, pan, clear, and coordinate conversion
+- lightweight transform-override previews for smooth interaction
 
 Image loading remains external and asynchronous. The renderer asks the cache
 for a loaded image and requests a load on cache miss; the host schedules the

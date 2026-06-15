@@ -293,6 +293,7 @@ function PanelContent({
   onPanelChange: (panel: ToolPanel) => void;
 }) {
   const store = useEditorStore();
+  const [draggedLayerId, setDraggedLayerId] = useState<string>();
   const currentPage =
     store.document.pages.find((page) => page.id === store.currentPageId) ??
     store.document.pages[0]!;
@@ -381,14 +382,41 @@ function PanelContent({
         </button>
       </div>
       <div className="mt-2 space-y-1" data-testid="layers-list">
-        {[...currentPage.children].reverse().map((nodeId) => {
+        {[...currentPage.children].reverse().map((nodeId, visualIndex) => {
           const node = store.document.nodes[nodeId]!;
           return (
             <button
               key={node.id}
-              className={`flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs transition ${store.selectedNodeIds.includes(node.id) ? "border-violet-200 bg-violet-50 text-violet-800" : "border-transparent hover:bg-zinc-50"}`}
+              className={`flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs transition ${draggedLayerId === node.id ? "opacity-40" : ""} ${store.selectedNodeIds.includes(node.id) ? "border-violet-200 bg-violet-50 text-violet-800" : "border-transparent hover:bg-zinc-50"}`}
               onClick={(event) => store.selectNode(node.id, event.shiftKey)}
+              draggable
+              onDragStart={(event) => {
+                setDraggedLayerId(node.id);
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", node.id);
+              }}
+              onDragOver={(event) => {
+                if (draggedLayerId) event.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (!draggedLayerId || draggedLayerId === node.id) return;
+                store.reorderNode(
+                  currentPage.id,
+                  draggedLayerId,
+                  currentPage.children.length - 1 - visualIndex,
+                );
+                setDraggedLayerId(undefined);
+              }}
+              onDragEnd={() => setDraggedLayerId(undefined)}
+              data-testid={`layer-${node.id}`}
             >
+              <span
+                className="cursor-grab text-zinc-300 active:cursor-grabbing"
+                title="Drag to reorder"
+              >
+                ⋮⋮
+              </span>
               <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-zinc-100 text-zinc-500">
                 <Icon
                   className="size-3.5"

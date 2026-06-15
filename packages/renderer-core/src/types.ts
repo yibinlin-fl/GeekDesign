@@ -4,6 +4,7 @@ import type {
   FontRef,
   Node,
   PageId,
+  Transform,
 } from "@geekdesign/design-schema";
 
 export interface Point {
@@ -30,6 +31,12 @@ export interface Renderer {
   renderDocument(document: DesignDocument, canvas: HTMLCanvasElement): void;
   renderPage(pageId: PageId): void;
   renderNode(node: Node): void;
+  renderPreview?(
+    document: DesignDocument,
+    canvas: HTMLCanvasElement,
+    pageId: PageId,
+    transformOverrides: ReadonlyMap<string, Transform>,
+  ): void;
   clear(): void;
   setViewport(viewport: Viewport): void;
   screenToCanvas(point: Point): Point;

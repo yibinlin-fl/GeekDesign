@@ -11,6 +11,7 @@ import {
   type RectNode,
   type SvgNode,
   type TextNode,
+  type Transform,
 } from "@geekdesign/design-schema";
 
 import type {
@@ -34,6 +35,7 @@ export class Canvas2DRenderer implements Renderer {
   private viewport: Viewport = defaultViewport();
   private readonly imageCache?: ImageCache;
   private readonly fontLoader?: FontLoader;
+  private transformOverrides?: ReadonlyMap<string, Transform>;
 
   constructor(options: Canvas2DRendererOptions = {}) {
     this.imageCache = options.imageCache;
@@ -79,14 +81,38 @@ export class Canvas2DRenderer implements Renderer {
     context.restore();
   }
 
+  renderPreview(
+    document: DesignDocument,
+    canvas: HTMLCanvasElement,
+    pageId: string,
+    transformOverrides: ReadonlyMap<string, Transform>,
+  ): void {
+    this.document = document;
+    this.canvas = canvas;
+    this.context = canvas.getContext("2d") ?? undefined;
+    if (!this.context)
+      throw new RendererError("Canvas 2D context is not available");
+    canvas.width = document.canvas.width;
+    canvas.height = document.canvas.height;
+    this.transformOverrides = transformOverrides;
+    try {
+      this.renderPage(pageId);
+    } finally {
+      this.transformOverrides = undefined;
+    }
+  }
+
   renderNode(node: Node): void {
     if (!node.style.visible || node.style.opacity <= 0) return;
     const context = this.requireContext();
 
+    const transform = this.transformOverrides?.get(node.id) ?? node.transform;
+    const renderedNode =
+      transform === node.transform ? node : ({ ...node, transform } as Node);
     context.save();
-    context.translate(node.transform.x, node.transform.y);
-    context.rotate((node.transform.rotation * Math.PI) / 180);
-    context.scale(node.transform.scaleX, node.transform.scaleY);
+    context.translate(transform.x, transform.y);
+    context.rotate((transform.rotation * Math.PI) / 180);
+    context.scale(transform.scaleX, transform.scaleY);
     context.globalAlpha *= node.style.opacity;
     context.globalCompositeOperation =
       node.style.blendMode === "normal"
@@ -94,30 +120,30 @@ export class Canvas2DRenderer implements Renderer {
         : (node.style.blendMode ?? "source-over");
     this.applyShadow(node);
 
-    switch (node.type) {
+    switch (renderedNode.type) {
       case "text":
-        this.renderTextNode(node);
+        this.renderTextNode(renderedNode);
         break;
       case "image":
-        this.renderImageNode(node);
+        this.renderImageNode(renderedNode);
         break;
       case "rect":
-        this.renderRectNode(node);
+        this.renderRectNode(renderedNode);
         break;
       case "ellipse":
-        this.renderEllipseNode(node);
+        this.renderEllipseNode(renderedNode);
         break;
       case "line":
-        this.renderLineNode(node);
+        this.renderLineNode(renderedNode);
         break;
       case "svg":
-        this.renderSvgNode(node);
+        this.renderSvgNode(renderedNode);
         break;
       case "group":
-        this.renderGroupNode(node);
+        this.renderGroupNode(renderedNode);
         break;
       case "frame":
-        this.renderFrameNode(node);
+        this.renderFrameNode(renderedNode);
         break;
     }
     context.restore();

@@ -243,6 +243,28 @@ describe("professional manipulation", () => {
     expect(state.document.nodes[groupId]).toBeUndefined();
     expect(state.selectedNodeIds).toEqual([rectId, ellipseId]);
   });
+
+  it("reorders a layer through one command", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addRect();
+    const rectId = useEditorStore.getState().selectedNodeId!;
+    store.addEllipse();
+    const ellipseId = useEditorStore.getState().selectedNodeId!;
+    const pageId = useEditorStore.getState().currentPageId;
+
+    useEditorStore.getState().reorderNode(pageId, rectId, 1);
+
+    expect(useEditorStore.getState().document.pages[0]?.children).toEqual([
+      ellipseId,
+      rectId,
+    ]);
+    useEditorStore.getState().undo();
+    expect(useEditorStore.getState().document.pages[0]?.children).toEqual([
+      rectId,
+      ellipseId,
+    ]);
+  });
 });
 
 const assetItem = (id: string, filename: string) => ({

@@ -198,6 +198,54 @@ describe("SceneGraph", () => {
     });
   });
 
+  it("calculates rotated bounds and precisely hit tests local geometry", () => {
+    graph.updateNode("title", {
+      transform: { x: 100, y: 100, width: 100, height: 50, rotation: 90 },
+    });
+
+    expect(graph.getBoundingBox("title")).toMatchObject({
+      x: 50,
+      y: 100,
+      width: 50,
+      height: 100,
+    });
+    expect(graph.hitTest("page_1", { x: 75, y: 150 })?.id).toBe("title");
+    expect(graph.hitTest("page_1", { x: 125, y: 125 })?.id).toBe("background");
+  });
+
+  it("composes nested group transforms for bounds and hit testing", () => {
+    graph.addNode(
+      "page_1",
+      createGroupNode({
+        id: "outer",
+        parentId: "page_1",
+        transform: { x: 100, y: 100, rotation: 90, scaleX: 2, scaleY: 2 },
+      }),
+    );
+    graph.moveNode("title", "outer");
+    graph.updateNode("title", {
+      transform: { x: 10, y: 20, width: 40, height: 30 },
+    });
+
+    const bounds = graph.getBoundingBox("title");
+    expect(bounds.x).toBeCloseTo(0);
+    expect(bounds.y).toBeCloseTo(120);
+    expect(bounds.width).toBeCloseTo(60);
+    expect(bounds.height).toBeCloseTo(80);
+    expect(graph.hitTest("page_1", { x: 30, y: 160 })?.id).toBe("title");
+  });
+
+  it("prevents hits on descendants of locked containers", () => {
+    graph.addNode(
+      "page_1",
+      createGroupNode({ id: "locked_group", parentId: "page_1" }),
+    );
+    graph.moveNode("title", "locked_group");
+    graph.updateNode("locked_group", { style: { locked: true } });
+
+    expect(graph.hitTest("page_1", { x: 30, y: 30 })?.id).toBe("background");
+  });
+
   it("serializes and deserializes a schema-valid document", () => {
     const serialized = graph.serialize();
     const restored = deserialize(serialized);

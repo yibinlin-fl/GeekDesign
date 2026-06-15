@@ -12,6 +12,36 @@ import type { BoundingBox, NodePatch, Point } from "./types";
 import { SceneGraphError } from "./types";
 
 const clone = <T>(value: T): T => structuredClone(value);
+type Matrix = [number, number, number, number, number, number];
+
+const multiply = (left: Matrix, right: Matrix): Matrix => [
+  left[0] * right[0] + left[2] * right[1],
+  left[1] * right[0] + left[3] * right[1],
+  left[0] * right[2] + left[2] * right[3],
+  left[1] * right[2] + left[3] * right[3],
+  left[0] * right[4] + left[2] * right[5] + left[4],
+  left[1] * right[4] + left[3] * right[5] + left[5],
+];
+
+const transformPoint = (matrix: Matrix, point: Point): Point => ({
+  x: matrix[0] * point.x + matrix[2] * point.y + matrix[4],
+  y: matrix[1] * point.x + matrix[3] * point.y + matrix[5],
+});
+
+const invert = (matrix: Matrix): Matrix => {
+  const determinant = matrix[0] * matrix[3] - matrix[1] * matrix[2];
+  if (Math.abs(determinant) < Number.EPSILON) {
+    throw new SceneGraphError("Node transform is not invertible");
+  }
+  return [
+    matrix[3] / determinant,
+    -matrix[1] / determinant,
+    -matrix[2] / determinant,
+    matrix[0] / determinant,
+    (matrix[2] * matrix[5] - matrix[3] * matrix[4]) / determinant,
+    (matrix[1] * matrix[4] - matrix[0] * matrix[5]) / determinant,
+  ];
+};
 
 const isContainer = (
   node: Node,
@@ -236,13 +266,25 @@ export class SceneGraph {
 
   getBoundingBox(nodeId: NodeId): BoundingBox {
     const node = this.requireNode(nodeId);
-    const origin = this.getWorldOrigin(node);
-    // TODO: calculate the axis-aligned bounding box for rotated nodes.
+    const matrix = this.getWorldMatrix(node);
+    const corners = [
+      transformPoint(matrix, { x: 0, y: 0 }),
+      transformPoint(matrix, { x: node.transform.width, y: 0 }),
+      transformPoint(matrix, {
+        x: node.transform.width,
+        y: node.transform.height,
+      }),
+      transformPoint(matrix, { x: 0, y: node.transform.height }),
+    ];
+    const left = Math.min(...corners.map((point) => point.x));
+    const top = Math.min(...corners.map((point) => point.y));
+    const right = Math.max(...corners.map((point) => point.x));
+    const bottom = Math.max(...corners.map((point) => point.y));
     return {
-      x: origin.x,
-      y: origin.y,
-      width: Math.abs(node.transform.width * node.transform.scaleX),
-      height: Math.abs(node.transform.height * node.transform.scaleY),
+      x: left,
+      y: top,
+      width: right - left,
+      height: bottom - top,
     };
   }
 
@@ -262,6 +304,7 @@ export class SceneGraph {
     const visit = (
       parentId: PageId | NodeId,
       ancestorsVisible: boolean,
+      ancestorsUnlocked: boolean,
     ): Node | undefined => {
       const children = this.getChildIds(parentId);
       for (let index = children.length - 1; index >= 0; index -= 1) {
@@ -269,22 +312,24 @@ export class SceneGraph {
         const visible =
           ancestorsVisible && node.style.visible && node.style.opacity > 0;
         if (!visible) continue;
+        const unlocked = ancestorsUnlocked && !node.style.locked;
 
         if (isContainer(node)) {
-          const childHit = visit(node.id, visible);
+          const insideClip =
+            node.type !== "frame" ||
+            !node.clipContent ||
+            this.containsNodePoint(node, point);
+          const childHit = insideClip ? visit(node.id, visible, unlocked) : undefined;
           if (childHit) return childHit;
         }
-        if (
-          !node.style.locked &&
-          this.containsPoint(this.getBoundingBox(node.id), point)
-        ) {
+        if (unlocked && this.containsNodePoint(node, point)) {
           return clone(node);
         }
       }
       return undefined;
     };
 
-    return visit(pageId, true);
+    return visit(pageId, true, true);
   }
 
   findNodesByRole(role: NodeRole): Node[] {
@@ -367,17 +412,49 @@ export class SceneGraph {
     return ids;
   }
 
-  private getWorldOrigin(node: Node): Point {
-    let x = node.transform.x;
-    let y = node.transform.y;
-    let parentId = node.parentId;
-    while (this.document.nodes[parentId]) {
-      const parent = this.requireNode(parentId);
-      x += parent.transform.x;
-      y += parent.transform.y;
-      parentId = parent.parentId;
+  private getWorldMatrix(node: Node): Matrix {
+    const matrices: Matrix[] = [];
+    let current: Node | undefined = node;
+    while (current) {
+      const radians = (current.transform.rotation * Math.PI) / 180;
+      const cosine = Math.cos(radians);
+      const sine = Math.sin(radians);
+      matrices.unshift([
+        cosine * current.transform.scaleX,
+        sine * current.transform.scaleX,
+        -sine * current.transform.scaleY,
+        cosine * current.transform.scaleY,
+        current.transform.x,
+        current.transform.y,
+      ]);
+      current = this.document.nodes[current.parentId];
     }
-    return { x, y };
+    return matrices.reduce<Matrix>(
+      (result, matrix) => multiply(result, matrix),
+      [1, 0, 0, 1, 0, 0],
+    );
+  }
+
+  private containsNodePoint(node: Node, point: Point): boolean {
+    const local = transformPoint(invert(this.getWorldMatrix(node)), point);
+    if (
+      local.x < 0 ||
+      local.y < 0 ||
+      local.x > node.transform.width ||
+      local.y > node.transform.height
+    ) {
+      return false;
+    }
+    if (node.type === "ellipse") {
+      const radiusX = node.transform.width / 2;
+      const radiusY = node.transform.height / 2;
+      return (
+        ((local.x - radiusX) / radiusX) ** 2 +
+          ((local.y - radiusY) / radiusY) ** 2 <=
+        1
+      );
+    }
+    return true;
   }
 
   private normalizeInsertIndex(
@@ -390,14 +467,6 @@ export class SceneGraph {
     return Math.max(0, Math.min(index, length));
   }
 
-  private containsPoint(box: BoundingBox, point: Point): boolean {
-    return (
-      point.x >= box.x &&
-      point.x <= box.x + box.width &&
-      point.y >= box.y &&
-      point.y <= box.y + box.height
-    );
-  }
 }
 
 export const fromDocument = (document: DesignDocument): SceneGraph =>

@@ -299,29 +299,30 @@ export function CanvasStage() {
       const nextPreview = previewRef.current;
       if (!active || active.type === "marquee" || !canvas || !nextPreview)
         return;
-      const previewDocument = structuredClone(document);
+      const overrides = new Map<string, Transform>();
       if (active.type === "multiResize") {
         applyScaledPreview(
-          previewDocument,
+          document,
           selectedNodeIds,
           active.start,
           nextPreview,
-        );
+        ).forEach((transform, nodeId) => overrides.set(nodeId, transform));
       } else if (active.type === "move" && selectedNodeIds.length > 1) {
         const deltaX = nextPreview.x - active.start.x;
         const deltaY = nextPreview.y - active.start.y;
         selectedNodeIds.forEach((nodeId) => {
-          const node = previewDocument.nodes[nodeId];
+          const node = document.nodes[nodeId];
           if (!node) return;
-          node.transform.x += deltaX;
-          node.transform.y += deltaY;
+          overrides.set(nodeId, {
+            ...node.transform,
+            x: node.transform.x + deltaX,
+            y: node.transform.y + deltaY,
+          });
         });
       } else {
-        const previewNode = previewDocument.nodes[active.nodeId];
-        if (!previewNode) return;
-        previewNode.transform = nextPreview;
+        overrides.set(active.nodeId, nextPreview);
       }
-      renderPage(renderer, previewDocument, canvas, currentPageId);
+      renderer.renderPreview(document, canvas, currentPageId, overrides);
       setPreview(nextPreview);
     });
   };
@@ -431,7 +432,9 @@ export function CanvasStage() {
         <NodeOutline
           node={displayedSelected}
           color="#7c3aed"
-          selected
+          selected={
+            !displayedSelected.style.locked && displayedSelected.style.visible
+          }
           onResize={startResize}
           onRotate={startRotate}
         />
@@ -823,17 +826,22 @@ function applyScaledPreview(
   nodeIds: string[],
   before: Transform,
   after: Transform,
-) {
+): Map<string, Transform> {
+  const result = new Map<string, Transform>();
   const scaleX = after.width / before.width;
   const scaleY = after.height / before.height;
   nodeIds.forEach((nodeId) => {
     const node = document.nodes[nodeId];
     if (!node) return;
-    node.transform.x = after.x + (node.transform.x - before.x) * scaleX;
-    node.transform.y = after.y + (node.transform.y - before.y) * scaleY;
-    node.transform.width *= scaleX;
-    node.transform.height *= scaleY;
+    result.set(nodeId, {
+      ...node.transform,
+      x: after.x + (node.transform.x - before.x) * scaleX,
+      y: after.y + (node.transform.y - before.y) * scaleY,
+      width: node.transform.width * scaleX,
+      height: node.transform.height * scaleY,
+    });
   });
+  return result;
 }
 
 function renderPage(

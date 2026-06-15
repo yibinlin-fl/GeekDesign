@@ -103,6 +103,7 @@ interface EditorState {
   reorderSelected: (
     placement: "front" | "forward" | "backward" | "back",
   ) => void;
+  reorderNode: (parentId: string, nodeId: string, newIndex: number) => void;
   deleteSelected: () => void;
   duplicateSelected: () => void;
   copySelected: () => void;
@@ -663,7 +664,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   updateSelectedTransform: (transform) => {
     const nodeId = get().selectedNodeId;
-    if (!nodeId) return;
+    if (!nodeId || executor.toDocument().nodes[nodeId]?.style.locked) return;
     executor.execute(
       createCommand({
         ...commandContext(),
@@ -739,7 +740,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const document = executor.toDocument();
     const nodes = nodeIds
       .map((nodeId) => document.nodes[nodeId])
-      .filter((node): node is Node => Boolean(node));
+      .filter(
+        (node): node is Node => node !== undefined && !node.style.locked,
+      );
     if (nodes.length < 2 || !sameParent(nodes)) return;
     const groupId = id("group");
     executor.execute(
@@ -800,11 +803,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     );
     set(snapshot());
   },
+  reorderNode: (parentId, nodeId, newIndex) => {
+    const siblings = executor.getSceneGraph().getChildren(parentId);
+    const currentIndex = siblings.findIndex((node) => node.id === nodeId);
+    if (currentIndex < 0 || currentIndex === newIndex) return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "REORDER_NODE",
+        payload: { parentId, nodeId, newIndex },
+      }),
+    );
+    set(snapshot());
+  },
   deleteSelected: () => {
     const nodeIds = topLevelSelection(
       executor.toDocument(),
       get().selectedNodeIds,
-    );
+    ).filter((nodeId) => !executor.toDocument().nodes[nodeId]?.style.locked);
     if (nodeIds.length === 0) return;
     nodeIds.forEach((nodeId) =>
       executor.execute(
@@ -960,13 +977,17 @@ function executeCreateNode(parentId: string, node: Node, index?: number): void {
 function executeNodeUpdates(
   updates: Array<{ nodeId: string; patch: NodePatch }>,
 ): void {
-  if (updates.length === 0) return;
+  const document = executor.toDocument();
+  const editableUpdates = updates.filter(
+    ({ nodeId }) => !document.nodes[nodeId]?.style.locked,
+  );
+  if (editableUpdates.length === 0) return;
   executor.execute(
     createCommand({
       ...commandContext(),
       source: "user",
       type: "UPDATE_NODES",
-      payload: { updates },
+      payload: { updates: editableUpdates },
     }),
   );
 }

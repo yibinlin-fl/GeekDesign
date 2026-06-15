@@ -232,7 +232,11 @@ feat(export): add multi-page and pptx export pipeline
 - [ ] Replace full before/after history snapshots with compact patches
 - [ ] Add command batching and transactions
 - [ ] Add renderer dirty-region updates and layered caching
-- [ ] Improve rotated and nested-node bounding boxes and hit testing
+- [x] Improve rotated and nested-node bounding boxes and hit testing
+- [x] Avoid cloning the complete Design Document during drag previews
+- [x] Commit transform Commands only when pointer interaction ends
+- [x] Add layer drag-and-drop ordering
+- [ ] Add interactive image crop controls and schema migration
 - [ ] Add persistent command log replay
 - [ ] Add comments, team roles, and approval workflow
 - [ ] Add collaboration sequencing, conflict handling, then CRDT research
