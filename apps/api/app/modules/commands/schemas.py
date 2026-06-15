@@ -21,8 +21,11 @@ class CommandRequest(BaseModel):
         "GROUP_NODES",
         "UNGROUP_NODES",
         "ADD_PAGE",
+        "UPDATE_PAGE",
         "DELETE_PAGE",
         "SET_BACKGROUND",
+        "APPLY_THEME",
+        "APPLY_LAYOUT",
         "REGISTER_ASSET",
         "FILL_TEMPLATE_VARIABLES",
     ]

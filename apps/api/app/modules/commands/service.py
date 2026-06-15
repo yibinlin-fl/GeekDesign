@@ -223,6 +223,8 @@ def execute_command(document: dict[str, Any], command: CommandRequest) -> dict[s
                 status_code=400, detail="UPDATE_TEXT requires a text node and content"
             )
         node["text"]["content"] = content
+        node["text"]["runs"] = []
+        node["text"]["paragraphs"] = []
 
     elif command.type == "UPDATE_NODE":
         _update_node(candidate, payload.get("nodeId"), payload.get("patch"))
@@ -288,6 +290,14 @@ def execute_command(document: dict[str, Any], command: CommandRequest) -> dict[s
             _normalize_index(payload.get("index"), len(candidate["pages"])), deepcopy(page)
         )
 
+    elif command.type == "UPDATE_PAGE":
+        patch = payload.get("patch")
+        if not isinstance(patch, dict) or not patch:
+            raise HTTPException(status_code=400, detail="UPDATE_PAGE requires a patch")
+        if not set(patch).issubset({"name", "notes", "layoutId", "transition", "animations"}):
+            raise HTTPException(status_code=400, detail="UPDATE_PAGE patch contains invalid fields")
+        _require_page(candidate, payload.get("pageId")).update(deepcopy(patch))
+
     elif command.type == "DELETE_PAGE":
         page = _require_page(candidate, payload.get("pageId"))
         if len(candidate["pages"]) == 1:
@@ -301,6 +311,45 @@ def execute_command(document: dict[str, Any], command: CommandRequest) -> dict[s
         if not isinstance(background, dict):
             raise HTTPException(status_code=400, detail="SET_BACKGROUND requires background")
         _require_page(candidate, payload.get("pageId"))["background"] = deepcopy(background)
+
+    elif command.type == "APPLY_THEME":
+        theme = payload.get("theme")
+        if not isinstance(theme, dict) or not isinstance(theme.get("id"), str):
+            raise HTTPException(status_code=400, detail="APPLY_THEME requires a theme")
+        candidate.setdefault("themes", {})[theme["id"]] = deepcopy(theme)
+        candidate["activeThemeId"] = theme["id"]
+        colors = theme.get("colors", {})
+        fonts = theme.get("fonts", {})
+        if background := colors.get("background"):
+            for page in candidate["pages"]:
+                page["background"] = {"type": "solid", "color": background}
+        for node in candidate["nodes"].values():
+            if node["type"] != "text":
+                continue
+            heading = node.get("role") in {"title", "subtitle", "section_title"}
+            node["text"]["fontFamily"] = fonts.get("heading" if heading else "body", "Arial")
+            if color := colors.get("primary" if heading else "text"):
+                node["style"]["fill"] = {"type": "solid", "color": color}
+
+    elif command.type == "APPLY_LAYOUT":
+        layout = payload.get("layout")
+        if not isinstance(layout, dict) or not isinstance(layout.get("id"), str):
+            raise HTTPException(status_code=400, detail="APPLY_LAYOUT requires a layout")
+        page = _require_page(candidate, payload.get("pageId"))
+        candidate.setdefault("layouts", {})[layout["id"]] = deepcopy(layout)
+        page["layoutId"] = layout["id"]
+        page_nodes = [candidate["nodes"].get(node_id) for node_id in page["children"]]
+        for placeholder in layout.get("placeholders", []):
+            node = next(
+                (
+                    item
+                    for item in page_nodes
+                    if item and item.get("role") == placeholder.get("role")
+                ),
+                None,
+            )
+            if node and isinstance(placeholder.get("transform"), dict):
+                node["transform"] = deepcopy(placeholder["transform"])
 
     elif command.type == "REGISTER_ASSET":
         asset = payload.get("asset")

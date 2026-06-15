@@ -29,7 +29,9 @@ class NodeSchema(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     id: str = Field(min_length=1)
-    type: Literal["text", "image", "rect", "ellipse", "line", "svg", "group", "frame"]
+    type: Literal[
+        "text", "image", "rect", "ellipse", "line", "svg", "table", "chart", "group", "frame"
+    ]
     parentId: str = Field(min_length=1)
     transform: dict[str, Any]
     style: dict[str, Any]

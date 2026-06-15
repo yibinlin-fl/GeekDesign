@@ -8,18 +8,27 @@ import {
 } from "@geekdesign/command-system";
 import {
   createEmptyDocument,
+  createChartNode,
   createEllipseNode,
   createFrameNode,
   createImageNode,
   createLineNode,
   createRectNode,
+  createTableNode,
   createTextNode,
   validateDesignDocument,
   type DesignDocument,
+  type ChartNode,
+  type ElementAnimation,
+  type ImageCrop,
   type Node,
   type Page,
   type Paint,
+  type PageTransition,
+  type TableNode,
+  type SlideLayout,
   type TextNode,
+  type Theme,
 } from "@geekdesign/design-schema";
 import { SceneGraph, type NodePatch } from "@geekdesign/scene-graph";
 import { create } from "zustand";
@@ -59,17 +68,31 @@ interface EditorState {
   zoom: number;
   showGrid: boolean;
   snapToGrid: boolean;
+  cropMode: boolean;
+  animationPreviewProgress?: number;
   newDesign: () => void;
   selectPage: (pageId: string) => void;
   addPage: () => void;
   duplicatePage: (pageId?: string) => void;
   deletePage: (pageId?: string) => void;
   updatePageBackground: (paint: Paint) => void;
+  updatePageNotes: (notes: string) => void;
+  updatePageTransition: (transition: PageTransition) => void;
+  updateSelectedAnimation: (
+    animation?: Omit<ElementAnimation, "nodeId">,
+  ) => void;
+  setAnimationPreviewProgress: (progress?: number) => void;
+  applyTheme: (theme: Theme) => void;
+  applyLayout: (layout: SlideLayout) => void;
   addText: () => void;
   addRect: () => void;
   addEllipse: () => void;
   addLine: () => void;
   addFrame: () => void;
+  addTable: () => void;
+  addChart: () => void;
+  updateTableData: (table: TableNode["table"]) => void;
+  updateChartData: (chart: ChartNode["chart"]) => void;
   addImagePlaceholder: () => void;
   insertAsset: (asset: AssetItem, replaceSelected?: boolean) => void;
   selectNode: (nodeId?: string, additive?: boolean) => void;
@@ -78,12 +101,14 @@ interface EditorState {
   updateText: (content: string) => void;
   updateTextNode: (nodeId: string, content: string) => void;
   updateTextStyle: (text: Partial<TextNode["text"]>) => void;
+  toggleBullets: () => void;
   updateFontSize: (fontSize: number) => void;
   updateFillColor: (color: string) => void;
   updateStroke: (color: string, width: number) => void;
   updateOpacity: (opacity: number) => void;
   updateCornerRadius: (cornerRadius: number) => void;
   updateImageFit: (fit: "cover" | "contain" | "stretch") => void;
+  updateImageCrop: (crop?: ImageCrop) => void;
   updateShadow: (enabled: boolean) => void;
   updateLocked: (locked: boolean) => void;
   updateVisible: (visible: boolean) => void;
@@ -112,6 +137,7 @@ interface EditorState {
   setZoom: (zoom: number) => void;
   toggleGrid: () => void;
   toggleSnapToGrid: () => void;
+  toggleCropMode: () => void;
   undo: () => void;
   redo: () => void;
   save: () => void;
@@ -145,6 +171,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   zoom: 1,
   showGrid: true,
   snapToGrid: false,
+  cropMode: false,
+  animationPreviewProgress: undefined,
   newDesign: () => {
     executor = new CommandExecutor({
       sceneGraph: SceneGraph.fromDocument(createBlankDocument()),
@@ -254,6 +282,70 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     );
     set(snapshot());
   },
+  updatePageNotes: (notes) => {
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_PAGE",
+        payload: { pageId: activePageId, patch: { notes } },
+      }),
+    );
+    set(snapshot());
+  },
+  updatePageTransition: (transition) => {
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_PAGE",
+        payload: { pageId: activePageId, patch: { transition } },
+      }),
+    );
+    set(snapshot());
+  },
+  updateSelectedAnimation: (animation) => {
+    const nodeId = get().selectedNodeId;
+    if (!nodeId) return;
+    const page = currentPage(executor.toDocument());
+    const animations = (page.animations ?? []).filter(
+      (item) => item.nodeId !== nodeId,
+    );
+    if (animation) animations.push({ nodeId, ...animation });
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_PAGE",
+        payload: { pageId: page.id, patch: { animations } },
+      }),
+    );
+    set(snapshot());
+  },
+  setAnimationPreviewProgress: (animationPreviewProgress) =>
+    set({ animationPreviewProgress }),
+  applyTheme: (theme) => {
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "APPLY_THEME",
+        payload: { theme },
+      }),
+    );
+    set(snapshot());
+  },
+  applyLayout: (layout) => {
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "APPLY_LAYOUT",
+        payload: { pageId: activePageId, layout },
+      }),
+    );
+    set(snapshot());
+  },
   addText: () => {
     const document = executor.toDocument();
     const pageId = currentPage(document).id;
@@ -344,6 +436,82 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     executeCreateNode(pageId, node, 0);
     set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
   },
+  addTable: () => {
+    const pageId = currentPage(executor.toDocument()).id;
+    const node = createTableNode({
+      id: id("table"),
+      parentId: pageId,
+      name: "Table",
+      transform: { x: 100, y: 140, width: 600, height: 300 },
+    });
+    executeCreateNode(pageId, node);
+    set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
+  },
+  addChart: () => {
+    const pageId = currentPage(executor.toDocument()).id;
+    const node = createChartNode({
+      id: id("chart"),
+      parentId: pageId,
+      name: "Chart",
+      transform: { x: 140, y: 120, width: 520, height: 340 },
+    });
+    executeCreateNode(pageId, node);
+    set({ ...snapshot(), selectedNodeId: node.id, selectedNodeIds: [node.id] });
+  },
+  updateTableData: (table) => {
+    const nodeId = get().selectedNodeId;
+    const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
+    if (!nodeId || node?.type !== "table" || table.rows.length === 0) return;
+    const columnCount = Math.max(...table.rows.map((row) => row.length), 1);
+    const rows = table.rows.map((row) =>
+      Array.from({ length: columnCount }, (_, index) => row[index] ?? ""),
+    );
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_NODE",
+        payload: {
+          nodeId,
+          patch: {
+            table: {
+              ...table,
+              rows,
+              headerRows: Math.min(rows.length, Math.max(0, table.headerRows)),
+            },
+          },
+        },
+      }),
+    );
+    set(snapshot());
+  },
+  updateChartData: (chart) => {
+    const nodeId = get().selectedNodeId;
+    const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
+    if (!nodeId || node?.type !== "chart" || chart.labels.length === 0) return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_NODE",
+        payload: {
+          nodeId,
+          patch: {
+            chart: {
+              ...chart,
+              series: chart.series.map((series) => ({
+                ...series,
+                values: chart.labels.map(
+                  (_, index) => series.values[index] ?? 0,
+                ),
+              })),
+            },
+          },
+        },
+      }),
+    );
+    set(snapshot());
+  },
   addImagePlaceholder: () => {
     const document = executor.toDocument();
     const pageId = currentPage(document).id;
@@ -429,15 +597,26 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectNode: (selectedNodeId, additive = false) =>
     set((state) => {
       if (!selectedNodeId)
-        return { selectedNodeId: undefined, selectedNodeIds: [] };
+        return {
+          selectedNodeId: undefined,
+          selectedNodeIds: [],
+          cropMode: false,
+        };
       if (!additive)
-        return { selectedNodeId, selectedNodeIds: [selectedNodeId] };
+        return {
+          selectedNodeId,
+          selectedNodeIds: [selectedNodeId],
+          cropMode:
+            state.cropMode &&
+            state.document.nodes[selectedNodeId]?.type === "image",
+        };
       const selectedNodeIds = state.selectedNodeIds.includes(selectedNodeId)
         ? state.selectedNodeIds.filter((nodeId) => nodeId !== selectedNodeId)
         : [...state.selectedNodeIds, selectedNodeId];
       return {
         selectedNodeId: selectedNodeIds.at(-1),
         selectedNodeIds,
+        cropMode: false,
       };
     }),
   selectNodes: (selectedNodeIds) =>
@@ -468,6 +647,32 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         source: "user",
         type: "UPDATE_NODE",
         payload: { nodeId, patch: { text } },
+      }),
+    );
+    set(snapshot());
+  },
+  toggleBullets: () => {
+    const nodeId = get().selectedNodeId;
+    const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
+    if (!nodeId || node?.type !== "text") return;
+    let start = 0;
+    const paragraphs = node.text.paragraphs?.some((item) => item.bullet)
+      ? []
+      : node.text.content.split("\n").map((line) => {
+          const paragraph = {
+            start,
+            end: start + line.length,
+            bullet: { type: "unordered" as const, level: 0 },
+          };
+          start += line.length + 1;
+          return paragraph;
+        });
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_NODE",
+        payload: { nodeId, patch: { text: { paragraphs } } },
       }),
     );
     set(snapshot());
@@ -550,6 +755,31 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         source: "user",
         type: "UPDATE_NODE",
         payload: { nodeId, patch: { image: { fit } } },
+      }),
+    );
+    set(snapshot());
+  },
+  updateImageCrop: (crop) => {
+    const nodeId = get().selectedNodeId;
+    const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
+    if (!nodeId || node?.type !== "image") return;
+    const normalized = crop
+      ? {
+          x: Math.min(1 - crop.width, Math.max(0, crop.x)),
+          y: Math.min(1 - crop.height, Math.max(0, crop.y)),
+          width: Math.min(1 - crop.x, Math.max(0.05, crop.width)),
+          height: Math.min(1 - crop.y, Math.max(0.05, crop.height)),
+        }
+      : { x: 0, y: 0, width: 1, height: 1 };
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_NODE",
+        payload: {
+          nodeId,
+          patch: { image: { crop: normalized } },
+        },
       }),
     );
     set(snapshot());
@@ -740,9 +970,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const document = executor.toDocument();
     const nodes = nodeIds
       .map((nodeId) => document.nodes[nodeId])
-      .filter(
-        (node): node is Node => node !== undefined && !node.style.locked,
-      );
+      .filter((node): node is Node => node !== undefined && !node.style.locked);
     if (nodes.length < 2 || !sameParent(nodes)) return;
     const groupId = id("group");
     executor.execute(
@@ -891,6 +1119,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ zoom: Math.min(2, Math.max(0.25, Math.round(zoom * 100) / 100)) }),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
   toggleSnapToGrid: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
+  toggleCropMode: () =>
+    set((state) => ({
+      cropMode:
+        state.document.nodes[state.selectedNodeId ?? ""]?.type === "image"
+          ? !state.cropMode
+          : false,
+    })),
   undo: () => {
     executor.undo();
     const next = snapshot();

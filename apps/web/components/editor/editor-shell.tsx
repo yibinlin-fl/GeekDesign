@@ -1,6 +1,13 @@
 "use client";
 
-import type { Node, Page } from "@geekdesign/design-schema";
+import type {
+  ChartNode,
+  Node,
+  Page,
+  SlideLayout,
+  TableNode,
+  Theme,
+} from "@geekdesign/design-schema";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -324,6 +331,70 @@ function PanelContent({
         />
       </div>
 
+      <div className="mt-4">
+        <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">
+          Themes
+        </h3>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {themePresets.map((theme) => (
+            <button
+              key={theme.id}
+              className={`rounded-xl border p-2 text-left transition hover:border-violet-300 ${store.document.activeThemeId === theme.id ? "border-violet-500 bg-violet-50" : "border-zinc-200 bg-white"}`}
+              onClick={() => store.applyTheme(theme)}
+              aria-label={`Apply ${theme.name} theme`}
+            >
+              <span className="flex gap-1">
+                {["background", "primary", "text"].map((key) => (
+                  <span
+                    key={key}
+                    className="size-4 rounded-full border border-black/10"
+                    style={{ background: theme.colors[key] }}
+                  />
+                ))}
+              </span>
+              <span className="mt-2 block text-[10px] font-black text-zinc-600">
+                {theme.name}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">
+          Slide layouts
+        </h3>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {layoutPresets.map((layout) => (
+            <button
+              key={layout.id}
+              className={`rounded-xl border p-2 text-left transition hover:border-violet-300 ${
+                currentPage.layoutId === layout.id
+                  ? "border-violet-500 bg-violet-50"
+                  : "border-zinc-200 bg-white"
+              }`}
+              onClick={() => store.applyLayout(layout)}
+              aria-label={`Apply ${layout.name} layout`}
+            >
+              <span className="block aspect-[4/3] rounded-md bg-zinc-100 p-1.5">
+                {layout.placeholders.map((placeholder) => (
+                  <span
+                    key={placeholder.role}
+                    className="mb-1 block h-1.5 rounded-full bg-violet-300"
+                    style={{
+                      width: `${Math.max(18, (placeholder.transform.width / 800) * 100)}%`,
+                    }}
+                  />
+                ))}
+              </span>
+              <span className="mt-2 block text-[10px] font-black text-zinc-600">
+                {layout.name}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="mt-5 grid grid-cols-2 gap-2">
         <AddCard
           label="Add text"
@@ -367,6 +438,8 @@ function PanelContent({
           />
           <ShapeButton label="Add line" symbol="╱" onClick={store.addLine} />
           <ShapeButton label="Add frame" symbol="▣" onClick={store.addFrame} />
+          <ShapeButton label="Add table" symbol="▦" onClick={store.addTable} />
+          <ShapeButton label="Add chart" symbol="▥" onClick={store.addChart} />
         </div>
       </div>
 
@@ -447,6 +520,100 @@ function PanelContent({
   );
 }
 
+const themePresets: Theme[] = [
+  {
+    id: "theme_geek",
+    name: "Geek Violet",
+    colors: {
+      background: "#ffffff",
+      primary: "#7c3aed",
+      text: "#27272a",
+    },
+    fonts: { heading: "Arial", body: "Arial" },
+  },
+  {
+    id: "theme_midnight",
+    name: "Midnight",
+    colors: {
+      background: "#18181b",
+      primary: "#c4b5fd",
+      text: "#f4f4f5",
+    },
+    fonts: { heading: "Georgia", body: "Arial" },
+  },
+];
+
+const baseTransform = {
+  rotation: 0,
+  scaleX: 1,
+  scaleY: 1,
+};
+
+const layoutPresets: SlideLayout[] = [
+  {
+    id: "layout_title_body",
+    name: "Title + body",
+    placeholders: [
+      {
+        role: "title",
+        transform: {
+          ...baseTransform,
+          x: 72,
+          y: 64,
+          width: 656,
+          height: 100,
+        },
+      },
+      {
+        role: "body",
+        transform: {
+          ...baseTransform,
+          x: 72,
+          y: 190,
+          width: 656,
+          height: 330,
+        },
+      },
+    ],
+  },
+  {
+    id: "layout_split",
+    name: "Split story",
+    placeholders: [
+      {
+        role: "title",
+        transform: {
+          ...baseTransform,
+          x: 64,
+          y: 56,
+          width: 672,
+          height: 86,
+        },
+      },
+      {
+        role: "body",
+        transform: {
+          ...baseTransform,
+          x: 64,
+          y: 180,
+          width: 310,
+          height: 320,
+        },
+      },
+      {
+        role: "avatar",
+        transform: {
+          ...baseTransform,
+          x: 414,
+          y: 180,
+          width: 322,
+          height: 320,
+        },
+      },
+    ],
+  },
+];
+
 function AddCard({
   label,
   copy,
@@ -506,6 +673,9 @@ function Inspector({ node, page }: { node?: Node; page: Page }) {
     (state) => state.updateCornerRadius,
   );
   const updateImageFit = useEditorStore((state) => state.updateImageFit);
+  const updateImageCrop = useEditorStore((state) => state.updateImageCrop);
+  const updateTableData = useEditorStore((state) => state.updateTableData);
+  const updateChartData = useEditorStore((state) => state.updateChartData);
   const updateShadow = useEditorStore((state) => state.updateShadow);
   const updateLocked = useEditorStore((state) => state.updateLocked);
   const updateVisible = useEditorStore((state) => state.updateVisible);
@@ -663,6 +833,12 @@ function Inspector({ node, page }: { node?: Node; page: Page }) {
           </div>
         </InspectorSection>
       ) : null}
+      {node.type === "table" ? (
+        <TableDataEditor key={node.id} node={node} onCommit={updateTableData} />
+      ) : null}
+      {node.type === "chart" ? (
+        <ChartDataEditor key={node.id} node={node} onCommit={updateChartData} />
+      ) : null}
       <InspectorSection title="Appearance">
         {node.type !== "line" && node.type !== "image" ? (
           <ColorField
@@ -709,23 +885,77 @@ function Inspector({ node, page }: { node?: Node; page: Page }) {
           </div>
         ) : null}
         {node.type === "image" ? (
-          <label className="mt-3 block text-[11px] font-bold text-zinc-500">
-            Image fit
-            <select
-              className="mt-2 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700 outline-none"
-              value={node.image.fit}
-              onChange={(event) =>
-                updateImageFit(
-                  event.target.value as "cover" | "contain" | "stretch",
-                )
-              }
-              aria-label="Image fit"
-            >
-              <option value="cover">Cover</option>
-              <option value="contain">Contain</option>
-              <option value="stretch">Stretch</option>
-            </select>
-          </label>
+          <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+            <label className="block text-[11px] font-bold text-zinc-500">
+              Image fit
+              <select
+                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-bold text-zinc-700 outline-none"
+                value={node.image.fit}
+                onChange={(event) =>
+                  updateImageFit(
+                    event.target.value as "cover" | "contain" | "stretch",
+                  )
+                }
+                aria-label="Image fit"
+              >
+                <option value="cover">Cover</option>
+                <option value="contain">Contain</option>
+                <option value="stretch">Stretch</option>
+              </select>
+            </label>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-[11px] font-black text-zinc-600">
+                Crop region
+              </span>
+              <button
+                className="rounded-md px-2 py-1 text-[10px] font-bold text-violet-600 hover:bg-violet-100"
+                onClick={() => updateImageCrop(undefined)}
+              >
+                Reset
+              </button>
+            </div>
+            {(["x", "y", "width", "height"] as const).map((key) => {
+              const crop = node.image.crop ?? {
+                x: 0,
+                y: 0,
+                width: 1,
+                height: 1,
+              };
+              const max =
+                key === "x"
+                  ? 1 - crop.width
+                  : key === "y"
+                    ? 1 - crop.height
+                    : key === "width"
+                      ? 1 - crop.x
+                      : 1 - crop.y;
+              return (
+                <label
+                  key={key}
+                  className="mt-2 grid grid-cols-[48px_1fr_36px] items-center gap-2 text-[10px] font-bold uppercase text-zinc-400"
+                >
+                  {key}
+                  <input
+                    type="range"
+                    min={key === "width" || key === "height" ? 0.05 : 0}
+                    max={max}
+                    step="0.01"
+                    value={crop[key]}
+                    onChange={(event) =>
+                      updateImageCrop({
+                        ...crop,
+                        [key]: Number(event.target.value),
+                      })
+                    }
+                    aria-label={`Image crop ${key}`}
+                  />
+                  <span className="text-right text-zinc-500">
+                    {Math.round(crop[key] * 100)}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
         ) : null}
         <div className="mt-4 grid grid-cols-3 gap-2">
           <StateToggle
@@ -797,6 +1027,170 @@ function Inspector({ node, page }: { node?: Node; page: Page }) {
         </div>
       </InspectorSection>
     </div>
+  );
+}
+
+function TableDataEditor({
+  node,
+  onCommit,
+}: {
+  node: TableNode;
+  onCommit: (table: TableNode["table"]) => void;
+}) {
+  const [data, setData] = useState(() =>
+    node.table.rows.map((row) => row.join("\t")).join("\n"),
+  );
+  const [headerRows, setHeaderRows] = useState(node.table.headerRows);
+  const commit = () => {
+    const rows = data
+      .split(/\r?\n/)
+      .filter((row) => row.length > 0)
+      .map((row) => row.split("\t"));
+    if (rows.length > 0) onCommit({ ...node.table, rows, headerRows });
+  };
+
+  return (
+    <InspectorSection title="Table data">
+      <p className="mb-2 text-[10px] leading-4 text-zinc-400">
+        Paste rows from Excel or Sheets. Columns are separated by tabs.
+      </p>
+      <textarea
+        className="min-h-36 w-full resize-y rounded-xl border border-zinc-200 bg-zinc-50 p-3 font-mono text-[11px] leading-5 outline-none focus:border-violet-300 focus:bg-white"
+        value={data}
+        onChange={(event) => setData(event.target.value)}
+        onBlur={commit}
+        aria-label="Table data"
+      />
+      <label className="mt-3 flex items-center justify-between text-[11px] font-bold text-zinc-500">
+        Header rows
+        <input
+          className="w-20 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-right text-xs outline-none"
+          type="number"
+          min="0"
+          max={data.split(/\r?\n/).length}
+          value={headerRows}
+          onChange={(event) => setHeaderRows(Number(event.target.value))}
+          onBlur={commit}
+          aria-label="Table header rows"
+        />
+      </label>
+      <button
+        className="mt-3 w-full rounded-xl bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700"
+        onClick={commit}
+      >
+        Apply table data
+      </button>
+    </InspectorSection>
+  );
+}
+
+function ChartDataEditor({
+  node,
+  onCommit,
+}: {
+  node: ChartNode;
+  onCommit: (chart: ChartNode["chart"]) => void;
+}) {
+  const series = node.chart.series[0] ?? {
+    name: "Series 1",
+    values: [],
+    color: "#7c3aed",
+  };
+  const [kind, setKind] = useState(node.chart.kind);
+  const [labels, setLabels] = useState(node.chart.labels.join(", "));
+  const [values, setValues] = useState(series.values.join(", "));
+  const [seriesName, setSeriesName] = useState(series.name);
+  const [color, setColor] = useState(series.color);
+  const commit = () => {
+    const nextLabels = labels
+      .split(",")
+      .map((label) => label.trim())
+      .filter(Boolean);
+    const nextValues = values
+      .split(",")
+      .map((value) => Number(value.trim()))
+      .map((value) => (Number.isFinite(value) ? value : 0));
+    if (nextLabels.length === 0) return;
+    onCommit({
+      kind,
+      labels: nextLabels,
+      series: [
+        { name: seriesName.trim() || "Series 1", values: nextValues, color },
+      ],
+    });
+  };
+
+  return (
+    <InspectorSection title="Chart data">
+      <label className="block text-[11px] font-bold text-zinc-500">
+        Chart type
+        <select
+          className="mt-2 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold outline-none"
+          value={kind}
+          onChange={(event) =>
+            setKind(event.target.value as ChartNode["chart"]["kind"])
+          }
+          onBlur={commit}
+          aria-label="Chart type"
+        >
+          <option value="bar">Bar</option>
+          <option value="line">Line</option>
+          <option value="pie">Pie</option>
+        </select>
+      </label>
+      <DataField
+        label="Series name"
+        value={seriesName}
+        onChange={setSeriesName}
+        onBlur={commit}
+      />
+      <DataField
+        label="Labels, comma separated"
+        value={labels}
+        onChange={setLabels}
+        onBlur={commit}
+      />
+      <DataField
+        label="Values, comma separated"
+        value={values}
+        onChange={setValues}
+        onBlur={commit}
+      />
+      <div className="mt-3">
+        <ColorField label="Series color" value={color} onChange={setColor} />
+      </div>
+      <button
+        className="mt-3 w-full rounded-xl bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700"
+        onClick={commit}
+      >
+        Apply chart data
+      </button>
+    </InspectorSection>
+  );
+}
+
+function DataField({
+  label,
+  value,
+  onChange,
+  onBlur,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+}) {
+  return (
+    <label className="mt-3 block text-[11px] font-bold text-zinc-500">
+      {label}
+      <input
+        className="mt-2 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-normal outline-none focus:border-violet-300 focus:bg-white"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
+        aria-label={label}
+      />
+    </label>
   );
 }
 

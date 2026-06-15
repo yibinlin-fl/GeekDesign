@@ -10,6 +10,8 @@ import {
   type Paint,
   type RectNode,
   type SvgNode,
+  type TableNode,
+  type ChartNode,
   type TextNode,
   type Transform,
 } from "@geekdesign/design-schema";
@@ -139,6 +141,12 @@ export class Canvas2DRenderer implements Renderer {
       case "svg":
         this.renderSvgNode(renderedNode);
         break;
+      case "table":
+        this.renderTableNode(renderedNode);
+        break;
+      case "chart":
+        this.renderChartNode(renderedNode);
+        break;
       case "group":
         this.renderGroupNode(renderedNode);
         break;
@@ -172,7 +180,18 @@ export class Canvas2DRenderer implements Renderer {
     if (fill) context.fillStyle = fill;
 
     const lineHeight = node.text.fontSize * node.text.lineHeight;
+    let contentOffset = 0;
     node.text.content.split("\n").forEach((line, index) => {
+      const paragraph = node.text.paragraphs?.find(
+        (candidate) =>
+          candidate.start <= contentOffset && candidate.end >= contentOffset,
+      );
+      const prefix = paragraph?.bullet
+        ? paragraph.bullet.type === "ordered"
+          ? `${index + 1}. `
+          : "• "
+        : "";
+      const renderedLine = `${prefix}${line}`;
       const x =
         node.text.textAlign === "center"
           ? node.transform.width / 2
@@ -180,15 +199,26 @@ export class Canvas2DRenderer implements Renderer {
             ? node.transform.width
             : 0;
       if (fill)
-        context.fillText(line, x, index * lineHeight, node.transform.width);
+        context.fillText(
+          renderedLine,
+          x,
+          index * lineHeight,
+          node.transform.width,
+        );
       if (node.style.stroke) {
         this.applyStroke(
           node.style.stroke,
           node.transform.width,
           node.transform.height,
         );
-        context.strokeText(line, x, index * lineHeight, node.transform.width);
+        context.strokeText(
+          renderedLine,
+          x,
+          index * lineHeight,
+          node.transform.width,
+        );
       }
+      contentOffset += line.length + 1;
     });
   }
 
@@ -212,6 +242,7 @@ export class Canvas2DRenderer implements Renderer {
       node.image.fit,
       node.transform.width,
       node.transform.height,
+      node.image.crop,
     );
     context.restore();
     if (node.style.stroke) {
@@ -279,6 +310,81 @@ export class Canvas2DRenderer implements Renderer {
     context.strokeStyle = "#a1a1aa";
     context.strokeRect(0, 0, node.transform.width, node.transform.height);
     context.restore();
+  }
+
+  renderTableNode(node: TableNode): void {
+    const context = this.requireContext();
+    const rows = node.table.rows;
+    const columns = Math.max(...rows.map((row) => row.length), 1);
+    const rowHeight = node.transform.height / rows.length;
+    const columnWidth = node.transform.width / columns;
+    context.font = '500 14px "Arial"';
+    context.textAlign = "left";
+    context.textBaseline = "middle";
+    rows.forEach((row, rowIndex) => {
+      row.forEach((value, columnIndex) => {
+        context.fillStyle =
+          rowIndex < node.table.headerRows ? "#ede9fe" : "#ffffff";
+        context.fillRect(
+          columnIndex * columnWidth,
+          rowIndex * rowHeight,
+          columnWidth,
+          rowHeight,
+        );
+        context.strokeStyle = "#d4d4d8";
+        context.lineWidth = 1;
+        context.strokeRect(
+          columnIndex * columnWidth,
+          rowIndex * rowHeight,
+          columnWidth,
+          rowHeight,
+        );
+        context.fillStyle = "#27272a";
+        context.fillText(
+          value,
+          columnIndex * columnWidth + 8,
+          rowIndex * rowHeight + rowHeight / 2,
+          columnWidth - 16,
+        );
+      });
+    });
+  }
+
+  renderChartNode(node: ChartNode): void {
+    const context = this.requireContext();
+    const series = node.chart.series[0];
+    if (!series || series.values.length === 0) return;
+    const max = Math.max(...series.values.map(Math.abs), 1);
+    const padding = 32;
+    const width = node.transform.width - padding * 2;
+    const height = node.transform.height - padding * 2;
+    const slot = width / series.values.length;
+    context.strokeStyle = "#d4d4d8";
+    context.beginPath();
+    context.moveTo(padding, padding);
+    context.lineTo(padding, padding + height);
+    context.lineTo(padding + width, padding + height);
+    context.stroke();
+    series.values.forEach((value, index) => {
+      const barHeight = (Math.abs(value) / max) * (height - 20);
+      context.fillStyle = series.color;
+      context.fillRect(
+        padding + index * slot + slot * 0.2,
+        padding + height - barHeight,
+        slot * 0.6,
+        barHeight,
+      );
+      context.fillStyle = "#52525b";
+      context.font = '500 11px "Arial"';
+      context.textAlign = "center";
+      context.textBaseline = "top";
+      context.fillText(
+        node.chart.labels[index] ?? String(index + 1),
+        padding + index * slot + slot / 2,
+        padding + height + 6,
+        slot,
+      );
+    });
   }
 
   clear(): void {
@@ -457,23 +563,46 @@ export class Canvas2DRenderer implements Renderer {
     fit: ImageNode["image"]["fit"],
     width: number,
     height: number,
+    crop?: ImageNode["image"]["crop"],
   ): void {
     const context = this.requireContext();
     const sourceWidth = "width" in image ? Number(image.width) : width;
     const sourceHeight = "height" in image ? Number(image.height) : height;
-    if (fit === "stretch" || !sourceWidth || !sourceHeight) {
+    if (!sourceWidth || !sourceHeight) {
       context.drawImage(image, 0, 0, width, height);
+      return;
+    }
+    const sourceX = (crop?.x ?? 0) * sourceWidth;
+    const sourceY = (crop?.y ?? 0) * sourceHeight;
+    const croppedWidth = (crop?.width ?? 1) * sourceWidth;
+    const croppedHeight = (crop?.height ?? 1) * sourceHeight;
+    if (fit === "stretch") {
+      context.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        croppedWidth,
+        croppedHeight,
+        0,
+        0,
+        width,
+        height,
+      );
       return;
     }
 
     const scale =
       fit === "cover"
-        ? Math.max(width / sourceWidth, height / sourceHeight)
-        : Math.min(width / sourceWidth, height / sourceHeight);
-    const drawWidth = sourceWidth * scale;
-    const drawHeight = sourceHeight * scale;
+        ? Math.max(width / croppedWidth, height / croppedHeight)
+        : Math.min(width / croppedWidth, height / croppedHeight);
+    const drawWidth = croppedWidth * scale;
+    const drawHeight = croppedHeight * scale;
     context.drawImage(
       image,
+      sourceX,
+      sourceY,
+      croppedWidth,
+      croppedHeight,
       (width - drawWidth) / 2,
       (height - drawHeight) / 2,
       drawWidth,

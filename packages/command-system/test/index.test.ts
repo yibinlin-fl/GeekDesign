@@ -337,6 +337,20 @@ describe("CommandExecutor", () => {
       createCommand({
         ...context,
         source: "user",
+        type: "UPDATE_PAGE",
+        payload: {
+          pageId: "page_2",
+          patch: {
+            notes: "Presenter note",
+            transition: { type: "fade", durationMs: 500 },
+          },
+        },
+      }),
+    );
+    executor.execute(
+      createCommand({
+        ...context,
+        source: "user",
         type: "SET_BACKGROUND",
         payload: {
           pageId: "page_2",
@@ -354,6 +368,70 @@ describe("CommandExecutor", () => {
     );
 
     expect(validateDesignDocument(executor.toDocument()).pages).toHaveLength(1);
+  });
+
+  it("applies a reusable theme as one command", () => {
+    executor.execute(
+      createCommand({
+        ...context,
+        source: "user",
+        type: "APPLY_THEME",
+        payload: {
+          theme: {
+            id: "theme_test",
+            name: "Test",
+            colors: {
+              background: "#111111",
+              primary: "#ff0000",
+              text: "#eeeeee",
+            },
+            fonts: { heading: "Georgia", body: "Arial" },
+          },
+        },
+      }),
+    );
+
+    expect(executor.toDocument().activeThemeId).toBe("theme_test");
+    expect(executor.toDocument().nodes.title?.style.fill).toEqual({
+      type: "solid",
+      color: "#ff0000",
+    });
+  });
+
+  it("applies a semantic slide layout as one command", () => {
+    executor.execute(
+      createCommand({
+        ...context,
+        source: "user",
+        type: "APPLY_LAYOUT",
+        payload: {
+          pageId: "page_1",
+          layout: {
+            id: "layout_test",
+            name: "Test layout",
+            placeholders: [
+              {
+                role: "title",
+                transform: {
+                  x: 80,
+                  y: 60,
+                  width: 600,
+                  height: 100,
+                  rotation: 0,
+                  scaleX: 1,
+                  scaleY: 1,
+                },
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    expect(executor.toDocument().pages[0]?.layoutId).toBe("layout_test");
+    expect(executor.toDocument().nodes.title?.transform.x).toBe(80);
+    executor.undo();
+    expect(executor.toDocument().pages[0]?.layoutId).toBeUndefined();
   });
 
   it("validates command envelope fields", () => {

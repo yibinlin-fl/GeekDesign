@@ -12,6 +12,7 @@ export function TextToolbar() {
       : undefined,
   );
   const updateTextStyle = useEditorStore((state) => state.updateTextStyle);
+  const toggleBullets = useEditorStore((state) => state.toggleBullets);
   const updateFillColor = useEditorStore((state) => state.updateFillColor);
   if (selectedNodeIds.length !== 1 || node?.type !== "text") return null;
   const color =
@@ -75,6 +76,13 @@ export function TextToolbar() {
         </ToolbarButton>
       ))}
       <span className="mx-1 h-5 w-px bg-zinc-200" />
+      <ToolbarButton
+        label="Toggle bullets"
+        active={Boolean(node.text.paragraphs?.some((item) => item.bullet))}
+        onClick={toggleBullets}
+      >
+        •
+      </ToolbarButton>
       <label
         className="grid size-8 place-items-center rounded-lg bg-zinc-50"
         title="Text color"

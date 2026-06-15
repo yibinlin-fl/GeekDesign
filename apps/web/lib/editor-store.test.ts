@@ -88,12 +88,16 @@ describe("element library", () => {
     store.addEllipse();
     useEditorStore.getState().addLine();
     useEditorStore.getState().addFrame();
+    useEditorStore.getState().addTable();
+    useEditorStore.getState().addChart();
 
     const nodes = Object.values(useEditorStore.getState().document.nodes);
     expect(nodes.map((node) => node.type)).toEqual([
       "ellipse",
       "line",
       "frame",
+      "table",
+      "chart",
     ]);
     expect(useEditorStore.getState().document.pages[0]?.children[0]).toBe(
       nodes.find((node) => node.type === "frame")?.id,
@@ -101,6 +105,45 @@ describe("element library", () => {
     expect(
       nodes.find((node) => node.type === "line")?.style.stroke?.width,
     ).toBe(4);
+  });
+
+  it("edits table and chart data through commands", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addTable();
+    useEditorStore.getState().updateTableData({
+      rows: [
+        ["Name", "Score"],
+        ["Ada", "98"],
+      ],
+      headerRows: 1,
+    });
+
+    let state = useEditorStore.getState();
+    let selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.type === "table" && selected.table.rows[1]).toEqual([
+      "Ada",
+      "98",
+    ]);
+
+    state.addChart();
+    useEditorStore.getState().updateChartData({
+      kind: "line",
+      labels: ["Jan", "Feb"],
+      series: [{ name: "Revenue", values: [12, 24], color: "#2563eb" }],
+    });
+    state = useEditorStore.getState();
+    selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.type === "chart" && selected.chart).toMatchObject({
+      kind: "line",
+      labels: ["Jan", "Feb"],
+      series: [{ name: "Revenue", values: [12, 24], color: "#2563eb" }],
+    });
+    expect(state.canUndo).toBe(true);
   });
 
   it("updates appearance and image fit through commands", () => {
@@ -126,6 +169,19 @@ describe("element library", () => {
       ? state.document.nodes[state.selectedNodeId]
       : undefined;
     expect(selected?.type === "image" && selected.image.fit).toBe("contain");
+    useEditorStore
+      .getState()
+      .updateImageCrop({ x: 0.1, y: 0.2, width: 0.6, height: 0.7 });
+    state = useEditorStore.getState();
+    selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.type === "image" && selected.image.crop).toEqual({
+      x: 0.1,
+      y: 0.2,
+      width: 0.6,
+      height: 0.7,
+    });
   });
 });
 
@@ -162,6 +218,28 @@ describe("typography", () => {
     expect(undoneNode?.type === "text" && undoneNode.text.fontFamily).toBe(
       "Arial",
     );
+  });
+
+  it("toggles paragraph bullets through one command", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addText();
+    store.updateText("First\nSecond");
+    useEditorStore.getState().toggleBullets();
+
+    let state = useEditorStore.getState();
+    let selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.type === "text" && selected.text.paragraphs?.length).toBe(
+      2,
+    );
+    useEditorStore.getState().toggleBullets();
+    state = useEditorStore.getState();
+    selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.type === "text" && selected.text.paragraphs).toEqual([]);
   });
 });
 
@@ -209,6 +287,29 @@ describe("multi-page editor", () => {
     state = useEditorStore.getState();
     expect(state.document.pages).toHaveLength(1);
     expect(state.currentPageId).toBe(sourcePageId);
+  });
+
+  it("applies a reusable theme through one command", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addText();
+    store.applyTheme({
+      id: "theme_test",
+      name: "Test",
+      colors: {
+        background: "#111111",
+        primary: "#ff0000",
+        text: "#eeeeee",
+      },
+      fonts: { heading: "Georgia", body: "Arial" },
+    });
+
+    const state = useEditorStore.getState();
+    expect(state.document.activeThemeId).toBe("theme_test");
+    expect(state.document.pages[0]?.background).toEqual({
+      type: "solid",
+      color: "#111111",
+    });
   });
 });
 

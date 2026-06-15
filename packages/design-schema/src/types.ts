@@ -11,6 +11,8 @@ export type NodeType =
   | "ellipse"
   | "line"
   | "svg"
+  | "table"
+  | "chart"
   | "group"
   | "frame";
 
@@ -104,7 +106,34 @@ export interface TextNode extends Omit<BaseNode, "type"> {
     letterSpacing: number;
     textAlign: "left" | "center" | "right" | "justify";
     fontId?: FontId;
+    runs?: RichTextRun[];
+    paragraphs?: ParagraphStyle[];
   };
+}
+
+export interface RichTextRun {
+  start: number;
+  end: number;
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: number;
+  fontId?: FontId;
+  color?: string;
+  italic?: boolean;
+  underline?: boolean;
+  strikeThrough?: boolean;
+}
+
+export interface ParagraphStyle {
+  start: number;
+  end: number;
+  bullet?: {
+    type: "unordered" | "ordered";
+    level: number;
+  };
+  indent?: number;
+  spacingBefore?: number;
+  spacingAfter?: number;
 }
 
 export interface ImageNode extends Omit<BaseNode, "type"> {
@@ -113,7 +142,15 @@ export interface ImageNode extends Omit<BaseNode, "type"> {
     assetId: AssetId;
     fit: "cover" | "contain" | "stretch";
     alt?: string;
+    crop?: ImageCrop;
   };
+}
+
+export interface ImageCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface RectNode extends Omit<BaseNode, "type"> {
@@ -143,6 +180,28 @@ export interface SvgNode extends Omit<BaseNode, "type"> {
   };
 }
 
+export interface TableNode extends Omit<BaseNode, "type"> {
+  type: "table";
+  table: {
+    rows: string[][];
+    headerRows: number;
+    columnWidths?: number[];
+  };
+}
+
+export interface ChartNode extends Omit<BaseNode, "type"> {
+  type: "chart";
+  chart: {
+    kind: "bar" | "line" | "pie";
+    labels: string[];
+    series: Array<{
+      name: string;
+      values: number[];
+      color: string;
+    }>;
+  };
+}
+
 export interface GroupNode extends Omit<BaseNode, "type"> {
   type: "group";
   children: NodeId[];
@@ -161,6 +220,8 @@ export type Node =
   | EllipseNode
   | LineNode
   | SvgNode
+  | TableNode
+  | ChartNode
   | GroupNode
   | FrameNode;
 
@@ -169,6 +230,44 @@ export interface Page {
   name: string;
   background: Paint;
   children: NodeId[];
+  notes?: string;
+  layoutId?: string;
+  transition?: PageTransition;
+  animations?: ElementAnimation[];
+}
+
+export interface PageTransition {
+  type: "none" | "fade" | "push" | "wipe";
+  durationMs: number;
+  direction?: "left" | "right" | "up" | "down";
+}
+
+export interface ElementAnimation {
+  nodeId: NodeId;
+  effect: "fade-in" | "fly-in" | "zoom-in";
+  delayMs: number;
+  durationMs: number;
+  direction?: "left" | "right" | "up" | "down";
+}
+
+export interface Theme {
+  id: string;
+  name: string;
+  colors: Record<string, string>;
+  fonts: {
+    heading: string;
+    body: string;
+  };
+}
+
+export interface SlideLayout {
+  id: string;
+  name: string;
+  themeId?: string;
+  placeholders: Array<{
+    role: NodeRole;
+    transform: Transform;
+  }>;
 }
 
 export interface Canvas {
@@ -229,4 +328,7 @@ export interface DesignDocument {
   fonts: Record<FontId, FontRef>;
   variables: Record<string, TemplateVariable>;
   metadata: Metadata;
+  themes?: Record<string, Theme>;
+  layouts?: Record<string, SlideLayout>;
+  activeThemeId?: string;
 }

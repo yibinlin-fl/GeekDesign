@@ -2,7 +2,13 @@
 
 import { Canvas2DRenderer } from "@geekdesign/renderer-core";
 import { SceneGraph } from "@geekdesign/scene-graph";
-import type { Node, TextNode, Transform } from "@geekdesign/design-schema";
+import type {
+  ImageCrop,
+  ImageNode,
+  Node,
+  TextNode,
+  Transform,
+} from "@geekdesign/design-schema";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BrowserImageCache } from "../../lib/browser-image-cache";
@@ -39,6 +45,12 @@ type Interaction =
       center: Point;
       startAngle: number;
       start: Transform;
+    }
+  | {
+      type: "crop";
+      nodeId: string;
+      startPoint: Point;
+      start: ImageCrop;
     };
 
 interface Point {
@@ -53,6 +65,7 @@ export function CanvasStage() {
   const interactionRef = useRef<Interaction>();
   const previewRef = useRef<Transform>();
   const [preview, setPreview] = useState<Transform>();
+  const [cropPreview, setCropPreview] = useState<ImageCrop>();
   const [marquee, setMarquee] = useState<{ start: Point; end: Point }>();
   const [contextMenu, setContextMenu] = useState<Point>();
   const [editing, setEditing] = useState<{
@@ -73,6 +86,10 @@ export function CanvasStage() {
   const document = useEditorStore((state) => state.document);
   const currentPageId = useEditorStore((state) => state.currentPageId);
   const snapToGrid = useEditorStore((state) => state.snapToGrid);
+  const cropMode = useEditorStore((state) => state.cropMode);
+  const animationPreviewProgress = useEditorStore(
+    (state) => state.animationPreviewProgress,
+  );
   const sceneGraph = useMemo(
     () => SceneGraph.fromDocument(document),
     [document],
@@ -89,6 +106,7 @@ export function CanvasStage() {
   const moveSelectionBy = useEditorStore((state) => state.moveSelectionBy);
   const resizeSelection = useEditorStore((state) => state.resizeSelection);
   const updateTextNode = useEditorStore((state) => state.updateTextNode);
+  const updateImageCrop = useEditorStore((state) => state.updateImageCrop);
   const copySelected = useEditorStore((state) => state.copySelected);
   const cutSelected = useEditorStore((state) => state.cutSelected);
   const pasteClipboard = useEditorStore((state) => state.pasteClipboard);
@@ -98,7 +116,14 @@ export function CanvasStage() {
 
   useEffect(() => {
     if (canvasRef.current && !interactionRef.current) {
-      if (editing) {
+      if (animationPreviewProgress !== undefined) {
+        const previewDocument = animatedDocument(
+          document,
+          currentPageId,
+          animationPreviewProgress,
+        );
+        renderPage(renderer, previewDocument, canvasRef.current, currentPageId);
+      } else if (editing) {
         const previewDocument = structuredClone(document);
         const node = previewDocument.nodes[editing.nodeId];
         if (node?.type === "text") node.text.content = "";
@@ -107,7 +132,14 @@ export function CanvasStage() {
         renderPage(renderer, document, canvasRef.current, currentPageId);
       }
     }
-  }, [assetVersion, currentPageId, document, editing, renderer]);
+  }, [
+    animationPreviewProgress,
+    assetVersion,
+    currentPageId,
+    document,
+    editing,
+    renderer,
+  ]);
 
   useEffect(
     () => () => {
@@ -231,6 +263,22 @@ export function CanvasStage() {
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
+  const startCrop = (
+    event: React.PointerEvent<HTMLButtonElement>,
+    node: ImageNode,
+  ) => {
+    event.stopPropagation();
+    const crop = node.image.crop ?? { x: 0, y: 0, width: 1, height: 1 };
+    interactionRef.current = {
+      type: "crop",
+      nodeId: node.id,
+      startPoint: pointFromClient(event.clientX, event.clientY),
+      start: structuredClone(crop),
+    };
+    setCropPreview(crop);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const interaction = interactionRef.current;
     if (!interaction) {
@@ -242,6 +290,26 @@ export function CanvasStage() {
     const point = pointFromClient(event.clientX, event.clientY);
     if (interaction.type === "marquee") {
       setMarquee({ start: interaction.startPoint, end: point });
+      return;
+    }
+    if (interaction.type === "crop") {
+      const node = document.nodes[interaction.nodeId];
+      if (node?.type !== "image") return;
+      const deltaX =
+        (point.x - interaction.startPoint.x) / node.transform.width;
+      const deltaY =
+        (point.y - interaction.startPoint.y) / node.transform.height;
+      setCropPreview({
+        ...interaction.start,
+        x: Math.min(
+          1 - interaction.start.width,
+          Math.max(0, interaction.start.x + deltaX),
+        ),
+        y: Math.min(
+          1 - interaction.start.height,
+          Math.max(0, interaction.start.y + deltaY),
+        ),
+      });
       return;
     }
     let next = interaction.start;
@@ -346,11 +414,19 @@ export function CanvasStage() {
       }
       return;
     }
+    if (interaction?.type === "crop") {
+      interactionRef.current = undefined;
+      if (cropPreview && !sameCrop(interaction.start, cropPreview))
+        updateImageCrop(cropPreview);
+      setCropPreview(undefined);
+      return;
+    }
     const next = previewRef.current;
     if (!interaction || !next) return;
     interactionRef.current = undefined;
     previewRef.current = undefined;
     setPreview(undefined);
+    setCropPreview(undefined);
     setMarquee(undefined);
     if (!sameTransform(interaction.start, next)) {
       if (interaction.type === "multiResize") {
@@ -429,15 +505,23 @@ export function CanvasStage() {
         <MarqueeSelection start={marquee.start} end={marquee.end} />
       ) : null}
       {displayedSelected && selectedNodes.length === 1 && !editing ? (
-        <NodeOutline
-          node={displayedSelected}
-          color="#7c3aed"
-          selected={
-            !displayedSelected.style.locked && displayedSelected.style.visible
-          }
-          onResize={startResize}
-          onRotate={startRotate}
-        />
+        cropMode && displayedSelected.type === "image" ? (
+          <CropOverlay
+            node={displayedSelected}
+            crop={cropPreview ?? displayedSelected.image.crop}
+            onPointerDown={startCrop}
+          />
+        ) : (
+          <NodeOutline
+            node={displayedSelected}
+            color="#7c3aed"
+            selected={
+              !displayedSelected.style.locked && displayedSelected.style.visible
+            }
+            onResize={startResize}
+            onRotate={startRotate}
+          />
+        )
       ) : null}
       {editing ? (
         <InlineTextEditor
@@ -463,6 +547,49 @@ export function CanvasStage() {
           close={() => setContextMenu(undefined)}
         />
       ) : null}
+    </div>
+  );
+}
+
+function CropOverlay({
+  node,
+  crop = { x: 0, y: 0, width: 1, height: 1 },
+  onPointerDown,
+}: {
+  node: ImageNode;
+  crop?: ImageCrop;
+  onPointerDown: (
+    event: React.PointerEvent<HTMLButtonElement>,
+    node: ImageNode,
+  ) => void;
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute border-2 border-dashed border-white bg-black/35 outline outline-2 outline-violet-600"
+      style={{
+        left: node.transform.x,
+        top: node.transform.y,
+        width: node.transform.width,
+        height: node.transform.height,
+        transform: `rotate(${node.transform.rotation}deg)`,
+        transformOrigin: "top left",
+      }}
+      data-testid="crop-overlay"
+    >
+      <button
+        className="pointer-events-auto absolute cursor-move border-2 border-violet-500 bg-white/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.32)]"
+        style={{
+          left: crop.x * node.transform.width,
+          top: crop.y * node.transform.height,
+          width: crop.width * node.transform.width,
+          height: crop.height * node.transform.height,
+        }}
+        onPointerDown={(event) => onPointerDown(event, node)}
+        aria-label="Drag image crop region"
+      />
+      <span className="absolute -top-8 left-0 rounded-lg bg-violet-600 px-2 py-1 text-[10px] font-black text-white">
+        Drag crop region
+      </span>
     </div>
   );
 }
@@ -782,6 +909,12 @@ const sameTransform = (left: Transform, right: Transform) =>
     (key) => left[key as keyof Transform] === right[key as keyof Transform],
   );
 
+const sameCrop = (left: ImageCrop, right: ImageCrop) =>
+  left.x === right.x &&
+  left.y === right.y &&
+  left.width === right.width &&
+  left.height === right.height;
+
 const boxFromPoints = (start: Point, end: Point) => ({
   left: Math.min(start.x, end.x),
   top: Math.min(start.y, end.y),
@@ -852,4 +985,40 @@ function renderPage(
 ) {
   renderer.renderDocument(document, canvas);
   renderer.renderPage(pageId);
+}
+
+function animatedDocument(
+  document: ReturnType<typeof useEditorStore.getState>["document"],
+  pageId: string,
+  progress: number,
+) {
+  const preview = structuredClone(document);
+  const page = preview.pages.find((item) => item.id === pageId);
+  const animations = page?.animations ?? [];
+  const totalMs = Math.max(
+    1,
+    ...animations.map((animation) => animation.delayMs + animation.durationMs),
+  );
+  const currentMs = Math.min(1, Math.max(0, progress)) * totalMs;
+  animations.forEach((animation) => {
+    const node = preview.nodes[animation.nodeId];
+    if (!node) return;
+    const local = Math.min(
+      1,
+      Math.max(0, (currentMs - animation.delayMs) / animation.durationMs),
+    );
+    node.style.opacity *= local;
+    if (animation.effect === "zoom-in") {
+      node.transform.scaleX *= 0.7 + local * 0.3;
+      node.transform.scaleY *= 0.7 + local * 0.3;
+    }
+    if (animation.effect === "fly-in") {
+      const distance = (1 - local) * 80;
+      if (animation.direction === "right") node.transform.x += distance;
+      else if (animation.direction === "up") node.transform.y -= distance;
+      else if (animation.direction === "down") node.transform.y += distance;
+      else node.transform.x -= distance;
+    }
+  });
+  return preview;
 }

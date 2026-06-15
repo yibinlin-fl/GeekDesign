@@ -6,6 +6,7 @@ import resume from "../examples/resume.design.json";
 import {
   DESIGN_SCHEMA_VERSION,
   createEmptyDocument,
+  createChartNode,
   createEllipseNode,
   createFrameNode,
   createGroupNode,
@@ -14,6 +15,7 @@ import {
   createRectNode,
   createSvgNode,
   createTextNode,
+  createTableNode,
   designDocumentJsonSchema,
   migrate010To010,
   nodeRoleSchema,
@@ -59,6 +61,8 @@ describe("design-schema", () => {
       createSvgNode({ parentId, assetId: "asset_1" }),
       createGroupNode({ parentId }),
       createFrameNode({ parentId }),
+      createTableNode({ parentId }),
+      createChartNode({ parentId }),
     ];
 
     expect(nodes.map((node) => node.type)).toEqual([
@@ -69,6 +73,8 @@ describe("design-schema", () => {
       "svg",
       "group",
       "frame",
+      "table",
+      "chart",
     ]);
   });
 
@@ -160,5 +166,70 @@ describe("design-schema", () => {
     expect(designDocumentJsonSchema).toHaveProperty(
       "definitions.DesignDocument",
     );
+  });
+
+  it("validates crop, rich text, notes, transitions, themes, and layouts", () => {
+    const document = createEmptyDocument({
+      documentId: "design_advanced",
+      pageId: "page_1",
+      now: "2026-06-14T00:00:00.000Z",
+    });
+    const text = createTextNode({
+      id: "text_1",
+      parentId: "page_1",
+      content: "Hello",
+    });
+    text.text.runs = [{ start: 0, end: 5, fontWeight: 700 }];
+    text.text.paragraphs = [
+      { start: 0, end: 5, bullet: { type: "unordered", level: 0 } },
+    ];
+    const image = createImageNode({
+      id: "image_1",
+      parentId: "page_1",
+      assetId: "asset_1",
+      crop: { x: 0.1, y: 0.1, width: 0.8, height: 0.8 },
+    });
+    document.nodes = { text_1: text, image_1: image };
+    document.assets.asset_1 = {
+      id: "asset_1",
+      type: "image",
+      uri: "/asset.png",
+      mimeType: "image/png",
+    };
+    document.pages[0]!.children = ["text_1", "image_1"];
+    document.pages[0]!.notes = "Private presenter note";
+    document.pages[0]!.transition = { type: "fade", durationMs: 500 };
+    document.themes = {
+      default: {
+        id: "default",
+        name: "Default",
+        colors: { primary: "#7c3aed" },
+        fonts: { heading: "Arial", body: "Arial" },
+      },
+    };
+    document.layouts = {
+      title: {
+        id: "title",
+        name: "Title slide",
+        themeId: "default",
+        placeholders: [
+          {
+            role: "title",
+            transform: {
+              x: 100,
+              y: 100,
+              width: 800,
+              height: 100,
+              rotation: 0,
+              scaleX: 1,
+              scaleY: 1,
+            },
+          },
+        ],
+      },
+    };
+    document.activeThemeId = "default";
+
+    expect(validateDesignDocument(document)).toEqual(document);
   });
 });

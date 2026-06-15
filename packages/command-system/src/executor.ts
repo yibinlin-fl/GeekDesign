@@ -161,7 +161,11 @@ export class CommandExecutor {
         if (node?.type !== "text")
           throw new CommandValidationError("UPDATE_TEXT requires a text node");
         graph.updateNode(command.payload.nodeId, {
-          text: { content: command.payload.content },
+          text: {
+            content: command.payload.content,
+            runs: [],
+            paragraphs: [],
+          },
         });
         return graph;
       }
@@ -198,6 +202,17 @@ export class CommandExecutor {
             clone(command.payload.page),
           );
         });
+      case "UPDATE_PAGE":
+        return this.replaceDocument(graph, (document) => {
+          const page = document.pages.find(
+            (candidate) => candidate.id === command.payload.pageId,
+          );
+          if (!page)
+            throw new CommandValidationError(
+              `Page "${command.payload.pageId}" does not exist`,
+            );
+          Object.assign(page, clone(command.payload.patch));
+        });
       case "DELETE_PAGE":
         return this.deletePage(graph, command.payload.pageId);
       case "SET_BACKGROUND":
@@ -210,6 +225,54 @@ export class CommandExecutor {
               `Page "${command.payload.pageId}" does not exist`,
             );
           page.background = clone(command.payload.background);
+        });
+      case "APPLY_THEME":
+        return this.replaceDocument(graph, (document) => {
+          const theme = clone(command.payload.theme);
+          document.themes = { ...(document.themes ?? {}), [theme.id]: theme };
+          document.activeThemeId = theme.id;
+          const background = theme.colors.background;
+          if (background) {
+            document.pages.forEach((page) => {
+              page.background = { type: "solid", color: background };
+            });
+          }
+          Object.values(document.nodes).forEach((node) => {
+            if (node.type !== "text") return;
+            const heading = ["title", "subtitle", "section_title"].includes(
+              node.role ?? "",
+            );
+            node.text.fontFamily = heading
+              ? theme.fonts.heading
+              : theme.fonts.body;
+            const color = heading ? theme.colors.primary : theme.colors.text;
+            if (color) node.style.fill = { type: "solid", color };
+          });
+        });
+      case "APPLY_LAYOUT":
+        return this.replaceDocument(graph, (document) => {
+          const page = document.pages.find(
+            (candidate) => candidate.id === command.payload.pageId,
+          );
+          if (!page)
+            throw new CommandValidationError(
+              `Page "${command.payload.pageId}" does not exist`,
+            );
+          const layout = clone(command.payload.layout);
+          document.layouts = {
+            ...(document.layouts ?? {}),
+            [layout.id]: layout,
+          };
+          page.layoutId = layout.id;
+          const pageNodes = page.children
+            .map((nodeId) => document.nodes[nodeId])
+            .filter((node) => node !== undefined);
+          layout.placeholders.forEach((placeholder) => {
+            const node = pageNodes.find(
+              (candidate) => candidate.role === placeholder.role,
+            );
+            if (node) node.transform = clone(placeholder.transform);
+          });
         });
       case "REGISTER_ASSET":
         return this.replaceDocument(graph, (document) => {

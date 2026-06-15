@@ -7,6 +7,8 @@ import type {
   Page,
   PageId,
   Paint,
+  SlideLayout,
+  Theme,
 } from "@geekdesign/design-schema";
 import type { NodePatch, SceneGraph } from "@geekdesign/scene-graph";
 
@@ -26,8 +28,11 @@ export type CommandType =
   | "GROUP_NODES"
   | "UNGROUP_NODES"
   | "ADD_PAGE"
+  | "UPDATE_PAGE"
   | "DELETE_PAGE"
   | "SET_BACKGROUND"
+  | "APPLY_THEME"
+  | "APPLY_LAYOUT"
   | "REGISTER_ASSET"
   | "FILL_TEMPLATE_VARIABLES";
 
@@ -50,8 +55,16 @@ export interface CommandPayloadMap {
   };
   UNGROUP_NODES: { groupId: NodeId };
   ADD_PAGE: { page: Page; index?: number };
+  UPDATE_PAGE: {
+    pageId: PageId;
+    patch: Partial<
+      Pick<Page, "name" | "notes" | "layoutId" | "transition" | "animations">
+    >;
+  };
   DELETE_PAGE: { pageId: PageId };
   SET_BACKGROUND: { pageId: PageId; background: Paint };
+  APPLY_THEME: { theme: Theme };
+  APPLY_LAYOUT: { pageId: PageId; layout: SlideLayout };
   REGISTER_ASSET: { asset: AssetRef };
   FILL_TEMPLATE_VARIABLES: { values: Record<string, unknown> };
 }

@@ -127,6 +127,44 @@ export const textNodeSchema = z
         letterSpacing: finiteNumberSchema,
         textAlign: z.enum(["left", "center", "right", "justify"]),
         fontId: idSchema.optional(),
+        runs: z
+          .array(
+            z
+              .object({
+                start: nonNegativeNumberSchema.int(),
+                end: nonNegativeNumberSchema.int(),
+                fontFamily: z.string().min(1).optional(),
+                fontSize: positiveNumberSchema.optional(),
+                fontWeight: z.number().int().min(1).max(1000).optional(),
+                fontId: idSchema.optional(),
+                color: colorSchema.optional(),
+                italic: z.boolean().optional(),
+                underline: z.boolean().optional(),
+                strikeThrough: z.boolean().optional(),
+              })
+              .strict(),
+          )
+          .optional(),
+        paragraphs: z
+          .array(
+            z
+              .object({
+                start: nonNegativeNumberSchema.int(),
+                end: nonNegativeNumberSchema.int(),
+                bullet: z
+                  .object({
+                    type: z.enum(["unordered", "ordered"]),
+                    level: nonNegativeNumberSchema.int(),
+                  })
+                  .strict()
+                  .optional(),
+                indent: nonNegativeNumberSchema.optional(),
+                spacingBefore: nonNegativeNumberSchema.optional(),
+                spacingAfter: nonNegativeNumberSchema.optional(),
+              })
+              .strict(),
+          )
+          .optional(),
       })
       .strict(),
   })
@@ -141,6 +179,23 @@ export const imageNodeSchema = z
         assetId: idSchema,
         fit: z.enum(["cover", "contain", "stretch"]),
         alt: z.string().optional(),
+        crop: z
+          .object({
+            x: z.number().min(0).max(1),
+            y: z.number().min(0).max(1),
+            width: z.number().positive().max(1),
+            height: z.number().positive().max(1),
+          })
+          .strict()
+          .refine(
+            (crop) => crop.x + crop.width <= 1,
+            "crop exceeds image width",
+          )
+          .refine(
+            (crop) => crop.y + crop.height <= 1,
+            "crop exceeds image height",
+          )
+          .optional(),
       })
       .strict(),
   })
@@ -189,6 +244,42 @@ export const svgNodeSchema = z
   })
   .strict();
 
+export const tableNodeSchema = z
+  .object({
+    ...baseNodeShape,
+    type: z.literal("table"),
+    table: z
+      .object({
+        rows: z.array(z.array(z.string())).min(1),
+        headerRows: nonNegativeNumberSchema.int(),
+        columnWidths: z.array(positiveNumberSchema).optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const chartNodeSchema = z
+  .object({
+    ...baseNodeShape,
+    type: z.literal("chart"),
+    chart: z
+      .object({
+        kind: z.enum(["bar", "line", "pie"]),
+        labels: z.array(z.string()),
+        series: z.array(
+          z
+            .object({
+              name: z.string().min(1),
+              values: z.array(finiteNumberSchema),
+              color: colorSchema,
+            })
+            .strict(),
+        ),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const groupNodeSchema = z
   .object({
     ...baseNodeShape,
@@ -213,6 +304,8 @@ export const nodeSchema = z.discriminatedUnion("type", [
   ellipseNodeSchema,
   lineNodeSchema,
   svgNodeSchema,
+  tableNodeSchema,
+  chartNodeSchema,
   groupNodeSchema,
   frameNodeSchema,
 ]);
@@ -223,6 +316,29 @@ export const pageSchema = z
     name: z.string().min(1),
     background: paintSchema,
     children: z.array(idSchema),
+    notes: z.string().optional(),
+    layoutId: idSchema.optional(),
+    transition: z
+      .object({
+        type: z.enum(["none", "fade", "push", "wipe"]),
+        durationMs: nonNegativeNumberSchema,
+        direction: z.enum(["left", "right", "up", "down"]).optional(),
+      })
+      .strict()
+      .optional(),
+    animations: z
+      .array(
+        z
+          .object({
+            nodeId: idSchema,
+            effect: z.enum(["fade-in", "fly-in", "zoom-in"]),
+            delayMs: nonNegativeNumberSchema,
+            durationMs: positiveNumberSchema,
+            direction: z.enum(["left", "right", "up", "down"]).optional(),
+          })
+          .strict(),
+      )
+      .optional(),
   })
   .strict();
 
@@ -293,5 +409,36 @@ export const designDocumentSchema = z
     fonts: z.record(fontRefSchema),
     variables: z.record(templateVariableSchema),
     metadata: metadataSchema,
+    themes: z
+      .record(
+        z
+          .object({
+            id: idSchema,
+            name: z.string().min(1),
+            colors: z.record(colorSchema),
+            fonts: z
+              .object({ heading: z.string().min(1), body: z.string().min(1) })
+              .strict(),
+          })
+          .strict(),
+      )
+      .optional(),
+    layouts: z
+      .record(
+        z
+          .object({
+            id: idSchema,
+            name: z.string().min(1),
+            themeId: idSchema.optional(),
+            placeholders: z.array(
+              z
+                .object({ role: nodeRoleSchema, transform: transformSchema })
+                .strict(),
+            ),
+          })
+          .strict(),
+      )
+      .optional(),
+    activeThemeId: idSchema.optional(),
   })
   .strict();

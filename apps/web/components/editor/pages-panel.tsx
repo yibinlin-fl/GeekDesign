@@ -14,6 +14,11 @@ export function PagesPanel() {
   const addPage = useEditorStore((state) => state.addPage);
   const duplicatePage = useEditorStore((state) => state.duplicatePage);
   const deletePage = useEditorStore((state) => state.deletePage);
+  const updatePageNotes = useEditorStore((state) => state.updatePageNotes);
+  const updatePageTransition = useEditorStore(
+    (state) => state.updatePageTransition,
+  );
+  const currentPage = document.pages.find((page) => page.id === currentPageId);
 
   return (
     <aside className="flex w-44 shrink-0 flex-col border-r border-zinc-300 bg-[#f7f7f9]">
@@ -82,7 +87,58 @@ export function PagesPanel() {
           </div>
         ))}
       </div>
+      <div className="border-t border-zinc-200 bg-white p-3">
+        <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+          Transition
+          <select
+            className="mt-2 w-full rounded-lg border border-zinc-200 bg-zinc-50 p-2 text-[11px] font-bold normal-case tracking-normal text-zinc-700"
+            value={currentPage?.transition?.type ?? "none"}
+            onChange={(event) =>
+              updatePageTransition({
+                type: event.target.value as "none" | "fade" | "push" | "wipe",
+                durationMs: event.target.value === "none" ? 0 : 500,
+              })
+            }
+            aria-label="Page transition"
+          >
+            <option value="none">None</option>
+            <option value="fade">Fade</option>
+            <option value="push">Push</option>
+            <option value="wipe">Wipe</option>
+          </select>
+        </label>
+        <SpeakerNotesEditor
+          key={currentPageId}
+          value={currentPage?.notes ?? ""}
+          onCommit={updatePageNotes}
+        />
+      </div>
     </aside>
+  );
+}
+
+function SpeakerNotesEditor({
+  value,
+  onCommit,
+}: {
+  value: string;
+  onCommit: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  return (
+    <label className="mt-3 block text-[9px] font-black uppercase tracking-widest text-zinc-400">
+      Speaker notes
+      <textarea
+        className="mt-2 h-24 w-full resize-none rounded-lg border border-zinc-200 bg-zinc-50 p-2 text-[11px] font-normal normal-case tracking-normal text-zinc-700 outline-none focus:border-violet-300"
+        placeholder="Add private notes for this slide..."
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          if (draft !== value) onCommit(draft);
+        }}
+        aria-label="Speaker notes"
+      />
+    </label>
   );
 }
 

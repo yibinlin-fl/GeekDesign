@@ -217,8 +217,63 @@ def test_page_asset_and_delete_commands(client: TestClient, valid_document: dict
     run_command(
         client,
         project_id,
+        "UPDATE_PAGE",
+        {
+            "pageId": "page_2",
+            "patch": {
+                "notes": "Presenter note",
+                "transition": {"type": "fade", "durationMs": 500},
+            },
+        },
+    )
+    run_command(
+        client,
+        project_id,
         "SET_BACKGROUND",
         {"pageId": "page_2", "background": {"type": "solid", "color": "#ff0000"}},
+    )
+    run_command(
+        client,
+        project_id,
+        "APPLY_THEME",
+        {
+            "theme": {
+                "id": "theme_test",
+                "name": "Test",
+                "colors": {
+                    "background": "#111111",
+                    "primary": "#ff0000",
+                    "text": "#eeeeee",
+                },
+                "fonts": {"heading": "Georgia", "body": "Arial"},
+            }
+        },
+    )
+    run_command(
+        client,
+        project_id,
+        "APPLY_LAYOUT",
+        {
+            "pageId": "page_1",
+            "layout": {
+                "id": "layout_test",
+                "name": "Title layout",
+                "placeholders": [
+                    {
+                        "role": "title",
+                        "transform": {
+                            "x": 80,
+                            "y": 60,
+                            "width": 600,
+                            "height": 100,
+                            "rotation": 0,
+                            "scaleX": 1,
+                            "scaleY": 1,
+                        },
+                    }
+                ],
+            },
+        },
     )
     run_command(
         client,

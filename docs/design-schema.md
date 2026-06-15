@@ -76,3 +76,14 @@ interface.
 Breaking schema changes require a migration and tests for both the old input
 and new output. Services should migrate documents before constructing a Scene
 Graph.
+
+Presentation-oriented optional fields extend the same stable model:
+
+- image crop rectangles use normalized source coordinates
+- rich-text runs and paragraph styles target canonical text ranges
+- pages carry speaker notes, layout references, and transitions
+- documents carry reusable themes and slide layouts
+- tables and charts remain structured editable nodes
+
+These fields do not depend on PPTX OOXML. Import and export adapters translate
+between OOXML and the Design Schema while the editor keeps one canonical model.

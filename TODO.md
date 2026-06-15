@@ -196,12 +196,22 @@ feat(command): unify backend command execution and mcp coverage
 
 ## Later Stage: Rich Slide Content
 
-- [ ] Extend Design Schema with rich text and text ranges
-- [ ] Add bullets, numbering, indentation, and text auto-fit
+- [x] Extend Design Schema with rich text and text ranges
+- [ ] Add selection-based rich text editing and preserve ranges during typing
+- [x] Add basic paragraph bullets
+- [ ] Add numbering, indentation, and text auto-fit controls
 - [ ] Add arrows, connectors, icons, editable SVG, and QR code nodes
-- [ ] Add tables and charts with structured data
-- [ ] Add image crop, mask, flip, filters, and adjustments
-- [ ] Add slide layouts, themes, masters, sections, and speaker notes
+- [x] Add tables and charts with structured data and Canvas rendering
+- [x] Add normalized image crop model and editor controls
+- [x] Add direct-on-canvas crop dragging
+- [ ] Add mask, flip, filters, and image adjustments
+- [x] Add speaker notes and page transition metadata
+- [x] Add slide layout and theme schema foundations
+- [x] Add theme application Command and preset UI
+- [x] Add semantic layout application Commands and preset UI
+- [ ] Add master editing UI and sections
+- [x] Add table and chart data editors
+- [x] Add basic element entrance animation timeline and playback preview
 - [ ] Add reusable components and brand kits
 - [ ] Add schema migrations and fixtures for every new node type
 
@@ -231,12 +241,15 @@ feat(export): add multi-page and pptx export pipeline
 
 - [ ] Replace full before/after history snapshots with compact patches
 - [ ] Add command batching and transactions
-- [ ] Add renderer dirty-region updates and layered caching
+- [x] Add an experimental WebGL2 solid-shape renderer and dirty-region API
+- [ ] Add Canvas dirty-region updates and layered caching
+- [ ] Implement WebGL image/text batching and production renderer selection
+- [x] Add basic presentation animation playback
 - [x] Improve rotated and nested-node bounding boxes and hit testing
 - [x] Avoid cloning the complete Design Document during drag previews
 - [x] Commit transform Commands only when pointer interaction ends
 - [x] Add layer drag-and-drop ordering
-- [ ] Add interactive image crop controls and schema migration
+- [x] Add interactive image crop controls
 - [ ] Add persistent command log replay
 - [ ] Add comments, team roles, and approval workflow
 - [ ] Add collaboration sequencing, conflict handling, then CRDT research

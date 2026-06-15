@@ -1,12 +1,13 @@
 import {
   createEmptyDocument,
+  createImageNode,
   createRectNode,
   createTextNode,
   type DesignDocument,
 } from "@geekdesign/design-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Canvas2DRenderer } from "../src";
+import { Canvas2DRenderer, WebGLRenderer } from "../src";
 
 type ContextMethod = ReturnType<typeof vi.fn>;
 
@@ -159,5 +160,73 @@ describe("Canvas2DRenderer", () => {
 
     expect(mock.methods.translate).toHaveBeenCalledWith(250, 30);
     expect(document.nodes.rect?.transform.x).toBe(20);
+  });
+
+  it("renders a normalized image crop as a source rectangle", () => {
+    const document = buildDocument();
+    document.assets.photo = {
+      id: "photo",
+      type: "image",
+      uri: "/photo.png",
+      mimeType: "image/png",
+      width: 800,
+      height: 600,
+    };
+    document.nodes = {
+      image: createImageNode({
+        id: "image",
+        parentId: "page_1",
+        assetId: "photo",
+        fit: "stretch",
+        crop: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 },
+        transform: { width: 200, height: 100 },
+      }),
+    };
+    document.pages[0]!.children = ["image"];
+    const image = { width: 800, height: 600 } as CanvasImageSource;
+    renderer = new Canvas2DRenderer({
+      imageCache: { get: () => image, load: vi.fn() },
+    });
+
+    renderer.renderDocument(document, mock.canvas);
+
+    expect(mock.methods.drawImage).toHaveBeenCalledWith(
+      image,
+      200,
+      150,
+      400,
+      300,
+      0,
+      0,
+      200,
+      100,
+    );
+  });
+});
+
+describe("WebGLRenderer", () => {
+  it("renders solid shapes and supports partial redraw", () => {
+    const gl = {
+      COLOR_BUFFER_BIT: 0x4000,
+      SCISSOR_TEST: 0x0c11,
+      clear: vi.fn(),
+      clearColor: vi.fn(),
+      disable: vi.fn(),
+      enable: vi.fn(),
+      scissor: vi.fn(),
+      viewport: vi.fn(),
+    } as unknown as WebGL2RenderingContext;
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => gl),
+    } as unknown as HTMLCanvasElement;
+    const renderer = new WebGLRenderer();
+
+    renderer.renderDocument(buildDocument(), canvas);
+    renderer.renderDirtyRegions("page_1", ["rect"]);
+
+    expect(gl.viewport).toHaveBeenCalledWith(0, 0, 500, 400);
+    expect(gl.scissor).toHaveBeenCalledWith(20, 270, 200, 100);
   });
 });

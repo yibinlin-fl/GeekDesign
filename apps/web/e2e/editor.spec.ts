@@ -117,6 +117,7 @@ test("resizes, rotates, nudges, duplicates, and deletes a selection", async ({
 });
 
 test("adds shapes and edits their appearance", async ({ page }) => {
+  await page.getByRole("button", { name: "Apply Midnight theme" }).click();
   await page.getByRole("button", { name: "Add ellipse" }).click();
   await expect(page.getByTestId("layers-list")).toContainText("Ellipse");
   await page.getByLabel("Opacity").fill("60");
@@ -127,6 +128,11 @@ test("adds shapes and edits their appearance", async ({ page }) => {
 
   await page.getByRole("button", { name: "Add frame" }).click();
   await expect(page.getByTestId("layers-list")).toContainText("Frame");
+
+  await page.getByRole("button", { name: "Add table" }).click();
+  await expect(page.getByTestId("layers-list")).toContainText("Table");
+  await page.getByRole("button", { name: "Add chart" }).click();
+  await expect(page.getByTestId("layers-list")).toContainText("Chart");
 });
 
 test("edits text directly on canvas and changes typography", async ({
@@ -161,6 +167,10 @@ test("edits text directly on canvas and changes typography", async ({
     "aria-pressed",
     "true",
   );
+  await page.getByRole("button", { name: "Toggle bullets" }).click();
+  await expect(
+    page.getByRole("button", { name: "Toggle bullets" }),
+  ).toHaveAttribute("aria-pressed", "true");
 });
 
 test("creates, switches, duplicates, and deletes pages", async ({ page }) => {
@@ -174,6 +184,9 @@ test("creates, switches, duplicates, and deletes pages", async ({ page }) => {
   await page.getByRole("button", { name: "Open page 1" }).click();
   await expect(page.getByTestId("layers-list")).not.toContainText("New text");
   await page.getByLabel("Page background").fill("#ffeecc");
+  await page.getByLabel("Page transition").selectOption("fade");
+  await page.getByLabel("Speaker notes").fill("Talk about the opening slide");
+  await page.getByLabel("Speaker notes").press("Tab");
 
   await page.getByRole("button", { name: "Duplicate page 1" }).click();
   await expect(page.getByTestId("page-card")).toHaveCount(3);

@@ -9,6 +9,8 @@ import type {
   Paint,
   RectNode,
   SvgNode,
+  TableNode,
+  ChartNode,
   TextNode,
   Transform,
 } from "./types";
@@ -116,6 +118,7 @@ export function createImageNode(
     assetId: string;
     fit?: ImageNode["image"]["fit"];
     alt?: string;
+    crop?: ImageNode["image"]["crop"];
   },
 ): ImageNode {
   return {
@@ -125,6 +128,7 @@ export function createImageNode(
       assetId: input.assetId,
       fit: input.fit ?? "cover",
       ...(input.alt ? { alt: input.alt } : {}),
+      ...(input.crop ? { crop: input.crop } : {}),
     },
   };
 }
@@ -158,6 +162,37 @@ export function createSvgNode(
     ...commonNode(input, "svg"),
     type: "svg",
     svg: { assetId: input.assetId, preserveAspectRatio: true },
+  };
+}
+
+export function createTableNode(
+  input: CommonNodeInput & { rows?: string[][]; headerRows?: number },
+): TableNode {
+  return {
+    ...commonNode(input, "table"),
+    type: "table",
+    table: {
+      rows: input.rows ?? [
+        ["Header 1", "Header 2", "Header 3"],
+        ["Value 1", "Value 2", "Value 3"],
+        ["Value 4", "Value 5", "Value 6"],
+      ],
+      headerRows: input.headerRows ?? 1,
+    },
+  };
+}
+
+export function createChartNode(input: CommonNodeInput): ChartNode {
+  return {
+    ...commonNode(input, "chart"),
+    type: "chart",
+    chart: {
+      kind: "bar",
+      labels: ["Q1", "Q2", "Q3", "Q4"],
+      series: [
+        { name: "Series 1", values: [30, 55, 42, 70], color: "#7c3aed" },
+      ],
+    },
   };
 }
 

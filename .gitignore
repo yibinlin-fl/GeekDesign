@@ -15,6 +15,7 @@ pnpm-debug.log*
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pytest-run-*/
 .ruff_cache/
 .venv/
 venv/

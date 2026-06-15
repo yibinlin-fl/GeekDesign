@@ -71,6 +71,19 @@ export function validateDesignDocument(input: unknown): DesignDocument {
         "Text node references a missing font",
       );
     }
+    if (node.type === "text") {
+      for (const [index, range] of [
+        ...(node.text.runs ?? []),
+        ...(node.text.paragraphs ?? []),
+      ].entries()) {
+        if (range.start > range.end || range.end > node.text.content.length) {
+          issue(
+            ["nodes", nodeKey, "text", "ranges", index],
+            "Text ranges must be ordered and remain within content",
+          );
+        }
+      }
+    }
   }
 
   const inspectChildren = (
@@ -155,6 +168,41 @@ export function validateDesignDocument(input: unknown): DesignDocument {
       );
     }
   }
+  for (const [themeKey, theme] of Object.entries(document.themes ?? {})) {
+    if (themeKey !== theme.id)
+      issue(["themes", themeKey, "id"], "Theme id must match its Record key");
+  }
+  for (const [layoutKey, layout] of Object.entries(document.layouts ?? {})) {
+    if (layoutKey !== layout.id)
+      issue(
+        ["layouts", layoutKey, "id"],
+        "Layout id must match its Record key",
+      );
+    if (layout.themeId && !document.themes?.[layout.themeId]) {
+      issue(
+        ["layouts", layoutKey, "themeId"],
+        "Layout references a missing theme",
+      );
+    }
+  }
+  if (document.activeThemeId && !document.themes?.[document.activeThemeId]) {
+    issue(["activeThemeId"], "Active theme does not exist");
+  }
+  document.pages.forEach((page, index) => {
+    if (page.layoutId && !document.layouts?.[page.layoutId]) {
+      issue(["pages", index, "layoutId"], "Page references a missing layout");
+    }
+    for (const [animationIndex, animation] of (
+      page.animations ?? []
+    ).entries()) {
+      if (!document.nodes[animation.nodeId]) {
+        issue(
+          ["pages", index, "animations", animationIndex, "nodeId"],
+          "Animation references a missing node",
+        );
+      }
+    }
+  });
 
   if (issues.length > 0) throw new z.ZodError(issues);
   return document;

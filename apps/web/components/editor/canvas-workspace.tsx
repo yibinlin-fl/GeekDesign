@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { localAssetFromFile } from "../../lib/assets";
 import { useEditorStore } from "../../lib/editor-store";
 import { CanvasStage } from "./canvas-stage";
+import { AnimationTimeline } from "./animation-timeline";
 import { ManipulationToolbar } from "./manipulation-toolbar";
 import { PagesPanel } from "./pages-panel";
 import { TextToolbar } from "./text-toolbar";
@@ -159,6 +160,7 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
       <div className="relative min-w-0 flex-1 overflow-hidden">
         <ManipulationToolbar />
         <TextToolbar />
+        <AnimationTimeline />
         <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
           <ZoomButton label="Zoom out" onClick={() => setZoom(zoom - 0.1)}>
             -

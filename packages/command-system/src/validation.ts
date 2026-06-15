@@ -16,8 +16,11 @@ const commandTypes = new Set<CommandType>([
   "GROUP_NODES",
   "UNGROUP_NODES",
   "ADD_PAGE",
+  "UPDATE_PAGE",
   "DELETE_PAGE",
   "SET_BACKGROUND",
+  "APPLY_THEME",
+  "APPLY_LAYOUT",
   "REGISTER_ASSET",
   "FILL_TEMPLATE_VARIABLES",
 ]);
@@ -172,6 +175,11 @@ export function validateCommand(input: unknown): Command {
       if (!isRecord(payload.page))
         throw new CommandValidationError("payload.page must be an object");
       break;
+    case "UPDATE_PAGE":
+      requireString(payload.pageId, "payload.pageId");
+      if (!isRecord(payload.patch))
+        throw new CommandValidationError("payload.patch must be an object");
+      break;
     case "DELETE_PAGE":
     case "SET_BACKGROUND":
       requireString(payload.pageId, "payload.pageId");
@@ -191,6 +199,17 @@ export function validateCommand(input: unknown): Command {
       requireString(payload.asset.id, "payload.asset.id");
       requireString(payload.asset.uri, "payload.asset.uri");
       requireString(payload.asset.mimeType, "payload.asset.mimeType");
+      break;
+    case "APPLY_THEME":
+      if (!isRecord(payload.theme))
+        throw new CommandValidationError("payload.theme must be an object");
+      requireString(payload.theme.id, "payload.theme.id");
+      break;
+    case "APPLY_LAYOUT":
+      requireString(payload.pageId, "payload.pageId");
+      if (!isRecord(payload.layout))
+        throw new CommandValidationError("payload.layout must be an object");
+      requireString(payload.layout.id, "payload.layout.id");
       break;
   }
 

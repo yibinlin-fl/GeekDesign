@@ -96,6 +96,14 @@ export function ManipulationToolbar() {
         Front
       </ToolButton>
       <Divider />
+      {selected?.type === "image" ? (
+        <>
+          <ToolButton label="Crop image" onClick={store.toggleCropMode}>
+            {store.cropMode ? "Done crop" : "Crop"}
+          </ToolButton>
+          <Divider />
+        </>
+      ) : null}
       <ToolButton label="Toggle grid" onClick={store.toggleGrid}>
         Grid {store.showGrid ? "on" : "off"}
       </ToolButton>
