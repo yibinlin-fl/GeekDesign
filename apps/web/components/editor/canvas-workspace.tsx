@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { localAssetFromFile } from "../../lib/assets";
 import { useEditorStore } from "../../lib/editor-store";
 import { CanvasStage } from "./canvas-stage";
+import { PagesPanel } from "./pages-panel";
 import { TextToolbar } from "./text-toolbar";
 
 export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
@@ -13,6 +14,7 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
   const [spacePressed, setSpacePressed] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
   const document = useEditorStore((state) => state.document);
+  const currentPageId = useEditorStore((state) => state.currentPageId);
   const zoom = useEditorStore((state) => state.zoom);
   const setZoom = useEditorStore((state) => state.setZoom);
   const insertAsset = useEditorStore((state) => state.insertAsset);
@@ -126,104 +128,112 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
   };
 
   return (
-    <section className="relative h-full min-w-0 overflow-hidden bg-[#ececf0]">
-      <TextToolbar />
-      <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
-        <ZoomButton label="Zoom out" onClick={() => setZoom(zoom - 0.1)}>
-          -
-        </ZoomButton>
-        <ZoomButton label="Fit canvas" onClick={fitCanvas} wide>
-          {Math.round(zoom * 100)}%
-        </ZoomButton>
-        <ZoomButton label="Zoom in" onClick={() => setZoom(zoom + 0.1)}>
-          +
-        </ZoomButton>
-        <span className="mx-1 h-5 w-px bg-zinc-200" />
-        <span className="px-2 text-[11px] font-bold text-zinc-500">Page 1</span>
-      </div>
-      <div
-        ref={viewportRef}
-        className={`canvas-grid h-full overflow-auto ${spacePressed ? "cursor-grab" : ""}`}
-        data-testid="canvas-viewport"
-        onPointerDownCapture={(event) => {
-          if (spacePressed) {
-            startPan(event);
-            event.stopPropagation();
-          }
-        }}
-        onPointerDown={startPan}
-        onPointerMove={(event) => {
-          const viewport = viewportRef.current;
-          const pan = panRef.current;
-          if (!viewport || !pan) return;
-          viewport.scrollLeft = pan.left - (event.clientX - pan.x);
-          viewport.scrollTop = pan.top - (event.clientY - pan.y);
-        }}
-        onPointerUp={() => {
-          panRef.current = undefined;
-        }}
-        onPointerCancel={() => {
-          panRef.current = undefined;
-        }}
-        onWheel={(event) => {
-          if (!event.ctrlKey && !event.metaKey) return;
-          event.preventDefault();
-          setZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1));
-        }}
-        onDragEnter={(event) => {
-          if (event.dataTransfer.types.includes("Files")) {
+    <section className="flex h-full min-w-0 overflow-hidden bg-[#ececf0]">
+      <PagesPanel />
+      <div className="relative min-w-0 flex-1 overflow-hidden">
+        <TextToolbar />
+        <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
+          <ZoomButton label="Zoom out" onClick={() => setZoom(zoom - 0.1)}>
+            -
+          </ZoomButton>
+          <ZoomButton label="Fit canvas" onClick={fitCanvas} wide>
+            {Math.round(zoom * 100)}%
+          </ZoomButton>
+          <ZoomButton label="Zoom in" onClick={() => setZoom(zoom + 0.1)}>
+            +
+          </ZoomButton>
+          <span className="mx-1 h-5 w-px bg-zinc-200" />
+          <span className="px-2 text-[11px] font-bold text-zinc-500">
+            Page{" "}
+            {document.pages.findIndex((page) => page.id === currentPageId) + 1}
+          </span>
+        </div>
+        <div
+          ref={viewportRef}
+          className={`canvas-grid h-full overflow-auto ${spacePressed ? "cursor-grab" : ""}`}
+          data-testid="canvas-viewport"
+          onPointerDownCapture={(event) => {
+            if (spacePressed) {
+              startPan(event);
+              event.stopPropagation();
+            }
+          }}
+          onPointerDown={startPan}
+          onPointerMove={(event) => {
+            const viewport = viewportRef.current;
+            const pan = panRef.current;
+            if (!viewport || !pan) return;
+            viewport.scrollLeft = pan.left - (event.clientX - pan.x);
+            viewport.scrollTop = pan.top - (event.clientY - pan.y);
+          }}
+          onPointerUp={() => {
+            panRef.current = undefined;
+          }}
+          onPointerCancel={() => {
+            panRef.current = undefined;
+          }}
+          onWheel={(event) => {
+            if (!event.ctrlKey && !event.metaKey) return;
             event.preventDefault();
-            setDraggingFile(true);
-          }
-        }}
-        onDragOver={(event) => {
-          if (event.dataTransfer.types.includes("Files"))
+            setZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1));
+          }}
+          onDragEnter={(event) => {
+            if (event.dataTransfer.types.includes("Files")) {
+              event.preventDefault();
+              setDraggingFile(true);
+            }
+          }}
+          onDragOver={(event) => {
+            if (event.dataTransfer.types.includes("Files"))
+              event.preventDefault();
+          }}
+          onDragLeave={(event) => {
+            if (event.currentTarget === event.target) setDraggingFile(false);
+          }}
+          onDrop={(event) => {
             event.preventDefault();
-        }}
-        onDragLeave={(event) => {
-          if (event.currentTarget === event.target) setDraggingFile(false);
-        }}
-        onDrop={(event) => {
-          event.preventDefault();
-          setDraggingFile(false);
-          const file = event.dataTransfer.files[0];
-          if (file)
-            void localAssetFromFile(file)
-              .then((asset) => insertAsset(asset))
-              .catch(() => undefined);
-        }}
-      >
-        <div className="grid min-h-full min-w-full place-items-center p-12">
-          <div
-            style={{
-              width: document.canvas.width * zoom,
-              height: document.canvas.height * zoom,
-            }}
-          >
+            setDraggingFile(false);
+            const file = event.dataTransfer.files[0];
+            if (file)
+              void localAssetFromFile(file)
+                .then((asset) => insertAsset(asset))
+                .catch(() => undefined);
+          }}
+        >
+          <div className="grid min-h-full min-w-full place-items-center p-12">
             <div
               style={{
-                width: document.canvas.width,
-                height: document.canvas.height,
-                transform: `scale(${zoom})`,
-                transformOrigin: "top left",
+                width: document.canvas.width * zoom,
+                height: document.canvas.height * zoom,
               }}
             >
-              <CanvasStage />
+              <div
+                style={{
+                  width: document.canvas.width,
+                  height: document.canvas.height,
+                  transform: `scale(${zoom})`,
+                  transformOrigin: "top left",
+                }}
+              >
+                <CanvasStage />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      {draggingFile ? (
-        <div className="pointer-events-none absolute inset-5 z-30 grid place-items-center rounded-3xl border-2 border-dashed border-violet-500 bg-violet-500/10 backdrop-blur-sm">
-          <div className="rounded-2xl bg-white px-8 py-5 text-center shadow-xl">
-            <p className="font-black text-violet-700">Drop image onto canvas</p>
-            <p className="mt-1 text-xs text-zinc-500">
-              PNG, JPEG, WebP, or SVG up to 10 MB
-            </p>
+        {draggingFile ? (
+          <div className="pointer-events-none absolute inset-5 z-30 grid place-items-center rounded-3xl border-2 border-dashed border-violet-500 bg-violet-500/10 backdrop-blur-sm">
+            <div className="rounded-2xl bg-white px-8 py-5 text-center shadow-xl">
+              <p className="font-black text-violet-700">
+                Drop image onto canvas
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                PNG, JPEG, WebP, or SVG up to 10 MB
+              </p>
+            </div>
           </div>
-        </div>
-      ) : null}
-      {children}
+        ) : null}
+        {children}
+      </div>
     </section>
   );
 }

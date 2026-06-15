@@ -165,6 +165,53 @@ describe("typography", () => {
   });
 });
 
+describe("multi-page editor", () => {
+  it("creates elements on the active page and switches pages", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    const firstPageId = useEditorStore.getState().currentPageId;
+
+    store.addPage();
+    const secondPageId = useEditorStore.getState().currentPageId;
+    useEditorStore.getState().addText();
+
+    let state = useEditorStore.getState();
+    expect(state.document.pages).toHaveLength(2);
+    expect(
+      state.document.pages.find((page) => page.id === firstPageId)?.children,
+    ).toHaveLength(0);
+    expect(
+      state.document.pages.find((page) => page.id === secondPageId)?.children,
+    ).toHaveLength(1);
+
+    state.selectPage(firstPageId);
+    state = useEditorStore.getState();
+    expect(state.currentPageId).toBe(firstPageId);
+    expect(state.selectedNodeId).toBeUndefined();
+  });
+
+  it("duplicates and deletes a page through commands", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addRect();
+    const sourcePageId = useEditorStore.getState().currentPageId;
+
+    store.duplicatePage();
+    let state = useEditorStore.getState();
+    expect(state.document.pages).toHaveLength(2);
+    expect(state.currentPageId).not.toBe(sourcePageId);
+    expect(
+      state.document.pages.find((page) => page.id === state.currentPageId)
+        ?.children,
+    ).toHaveLength(1);
+
+    state.deletePage();
+    state = useEditorStore.getState();
+    expect(state.document.pages).toHaveLength(1);
+    expect(state.currentPageId).toBe(sourcePageId);
+  });
+});
+
 const assetItem = (id: string, filename: string) => ({
   id,
   filename,

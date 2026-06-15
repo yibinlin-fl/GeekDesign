@@ -58,6 +58,19 @@ selection also exposes a contextual toolbar for font family, size, weight,
 alignment, and color. Line height and letter spacing are available in the
 Inspector.
 
+## Multi-Page Designs
+
+The editor exposes every Design Document page as a slide thumbnail. Users can
+add, switch, duplicate, and delete pages. The active page is editor-only state:
+it is never written into the Design Document and switching pages does not add a
+history entry.
+
+Page creation, deletion, duplication, and background changes use normal
+commands. New elements and uploaded assets are inserted into the active page,
+and the canvas, hit testing, layers panel, Inspector, and browser PNG export all
+follow that active page. Duplicating a page recursively recreates its node tree
+with new node ids while continuing to reference the document's shared assets.
+
 ## Persistence and Export
 
 The MVP saves one validated document to browser `localStorage` and loads it
@@ -69,12 +82,12 @@ export service can reuse Renderer Core for high-resolution server-side output.
 
 ## Current Scope
 
-The MVP supports blank designs, text, rectangles, ellipses, lines, frames,
-image placeholders, layer selection, drag movement, resize, rotation, keyboard
-movement, duplication, deletion, precise transform fields, text editing, font
-size, fills, strokes, opacity, shadows, locking, visibility, undo/redo, local
-save/load, and PNG export. The AI Assistant panel is a visual placeholder;
-future AI actions must dispatch the same normal commands.
+The MVP supports multi-page designs, blank pages, text, rectangles, ellipses,
+lines, frames, image placeholders, layer selection, drag movement, resize,
+rotation, keyboard movement, duplication, deletion, precise transform fields,
+text editing, font size, fills, strokes, opacity, shadows, locking, visibility,
+undo/redo, local save/load, and PNG export. The AI Assistant panel is a visual
+placeholder; future AI actions must dispatch the same normal commands.
 
 The Asset Panel uploads trusted image types through the API, lists generated
 thumbnails, and inserts real ImageNodes. A `REGISTER_ASSET` command first adds the

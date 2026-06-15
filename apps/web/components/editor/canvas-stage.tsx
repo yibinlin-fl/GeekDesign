@@ -60,6 +60,7 @@ export function CanvasStage() {
     [imageCache],
   );
   const document = useEditorStore((state) => state.document);
+  const currentPageId = useEditorStore((state) => state.currentPageId);
   const sceneGraph = useMemo(
     () => SceneGraph.fromDocument(document),
     [document],
@@ -79,12 +80,12 @@ export function CanvasStage() {
         const previewDocument = structuredClone(document);
         const node = previewDocument.nodes[editing.nodeId];
         if (node?.type === "text") node.text.content = "";
-        renderer.renderDocument(previewDocument, canvasRef.current);
+        renderPage(renderer, previewDocument, canvasRef.current, currentPageId);
       } else {
-        renderer.renderDocument(document, canvasRef.current);
+        renderPage(renderer, document, canvasRef.current, currentPageId);
       }
     }
-  }, [assetVersion, document, editing, renderer]);
+  }, [assetVersion, currentPageId, document, editing, renderer]);
 
   useEffect(
     () => () => {
@@ -103,8 +104,7 @@ export function CanvasStage() {
     };
   };
 
-  const hitNode = (point: Point) =>
-    sceneGraph.hitTest(document.pages[0]!.id, point);
+  const hitNode = (point: Point) => sceneGraph.hitTest(currentPageId, point);
 
   const onCanvasPointerDown = (
     event: React.PointerEvent<HTMLCanvasElement>,
@@ -234,7 +234,7 @@ export function CanvasStage() {
       const previewNode = previewDocument.nodes[active.nodeId];
       if (!previewNode) return;
       previewNode.transform = nextPreview;
-      renderer.renderDocument(previewDocument, canvas);
+      renderPage(renderer, previewDocument, canvas, currentPageId);
       setPreview(nextPreview);
     });
   };
@@ -249,7 +249,7 @@ export function CanvasStage() {
     if (!sameTransform(interaction.start, next)) {
       updateSelectedTransform(next);
     } else if (canvasRef.current) {
-      renderer.renderDocument(document, canvasRef.current);
+      renderPage(renderer, document, canvasRef.current, currentPageId);
     }
   };
 
@@ -257,7 +257,8 @@ export function CanvasStage() {
     interactionRef.current = undefined;
     previewRef.current = undefined;
     setPreview(undefined);
-    if (canvasRef.current) renderer.renderDocument(document, canvasRef.current);
+    if (canvasRef.current)
+      renderPage(renderer, document, canvasRef.current, currentPageId);
   };
 
   const selected = selectedNodeId ? document.nodes[selectedNodeId] : undefined;
@@ -533,3 +534,13 @@ const sameTransform = (left: Transform, right: Transform) =>
   Object.keys(left).every(
     (key) => left[key as keyof Transform] === right[key as keyof Transform],
   );
+
+function renderPage(
+  renderer: Canvas2DRenderer,
+  document: ReturnType<typeof useEditorStore.getState>["document"],
+  canvas: HTMLCanvasElement,
+  pageId: string,
+) {
+  renderer.renderDocument(document, canvas);
+  renderer.renderPage(pageId);
+}

@@ -162,3 +162,21 @@ test("edits text directly on canvas and changes typography", async ({
     "true",
   );
 });
+
+test("creates, switches, duplicates, and deletes pages", async ({ page }) => {
+  await expect(page.getByTestId("page-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Add page" }).click();
+  await expect(page.getByTestId("page-card")).toHaveCount(2);
+
+  await page.getByRole("button", { name: "Add text" }).click();
+  await expect(page.getByTestId("layers-list")).toContainText("New text");
+
+  await page.getByRole("button", { name: "Open page 1" }).click();
+  await expect(page.getByTestId("layers-list")).not.toContainText("New text");
+  await page.getByLabel("Page background").fill("#ffeecc");
+
+  await page.getByRole("button", { name: "Duplicate page 1" }).click();
+  await expect(page.getByTestId("page-card")).toHaveCount(3);
+  await page.getByRole("button", { name: "Delete page 2" }).click();
+  await expect(page.getByTestId("page-card")).toHaveCount(2);
+});

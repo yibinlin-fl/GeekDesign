@@ -1,6 +1,6 @@
 "use client";
 
-import type { Node } from "@geekdesign/design-schema";
+import type { Node, Page } from "@geekdesign/design-schema";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -24,6 +24,9 @@ export function EditorShell() {
   const [aiOpen, setAiOpen] = useState(false);
   const loadedProject = useRef<string>();
   const selected = getSelectedNode(store.document, store.selectedNodeId);
+  const currentPage =
+    store.document.pages.find((page) => page.id === store.currentPageId) ??
+    store.document.pages[0]!;
 
   useEffect(() => {
     if (!projectId) {
@@ -239,7 +242,7 @@ export function EditorShell() {
               <Icon className="size-4" name="settings" />
             </button>
           </div>
-          <Inspector node={selected} />
+          <Inspector node={selected} page={currentPage} />
         </aside>
       </div>
 
@@ -250,6 +253,7 @@ export function EditorShell() {
         <span className="ml-4">
           {Object.keys(store.document.nodes).length} elements
         </span>
+        <span className="ml-4">{store.document.pages.length} pages</span>
         <span className="ml-auto">{Math.round(store.zoom * 100)}%</span>
         <span className="mx-3 h-3 w-px bg-zinc-300" />
         <span>Canvas 2D renderer</span>
@@ -289,6 +293,9 @@ function PanelContent({
   onPanelChange: (panel: ToolPanel) => void;
 }) {
   const store = useEditorStore();
+  const currentPage =
+    store.document.pages.find((page) => page.id === store.currentPageId) ??
+    store.document.pages[0]!;
   return (
     <>
       <div className="flex items-center justify-between">
@@ -374,7 +381,7 @@ function PanelContent({
         </button>
       </div>
       <div className="mt-2 space-y-1" data-testid="layers-list">
-        {[...store.document.pages[0]!.children].reverse().map((nodeId) => {
+        {[...currentPage.children].reverse().map((nodeId) => {
           const node = store.document.nodes[nodeId]!;
           return (
             <button
@@ -401,7 +408,7 @@ function PanelContent({
             </button>
           );
         })}
-        {store.document.pages[0]!.children.length === 0 ? (
+        {currentPage.children.length === 0 ? (
           <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-center text-[11px] leading-5 text-zinc-400">
             Add an element to begin your design.
           </p>
@@ -460,7 +467,7 @@ function ShapeButton({
   );
 }
 
-function Inspector({ node }: { node?: Node }) {
+function Inspector({ node, page }: { node?: Node; page: Page }) {
   const updateText = useEditorStore((state) => state.updateText);
   const updateFontSize = useEditorStore((state) => state.updateFontSize);
   const updateTextStyle = useEditorStore((state) => state.updateTextStyle);
@@ -479,17 +486,40 @@ function Inspector({ node }: { node?: Node }) {
   );
   const duplicateSelected = useEditorStore((state) => state.duplicateSelected);
   const deleteSelected = useEditorStore((state) => state.deleteSelected);
+  const updatePageBackground = useEditorStore(
+    (state) => state.updatePageBackground,
+  );
 
   if (!node) {
+    const background =
+      page.background.type === "solid" ? page.background.color : "#ffffff";
     return (
-      <div className="p-5 text-center">
-        <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-violet-50 text-violet-500">
-          <Icon className="size-5" name="elements" />
+      <div>
+        <InspectorSection title="Page">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-violet-50 text-violet-600">
+              <Icon className="size-4" name="file" />
+            </span>
+            <div>
+              <p className="text-sm font-bold">{page.name}</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">
+                Page background
+              </p>
+            </div>
+          </div>
+        </InspectorSection>
+        <InspectorSection title="Appearance">
+          <ColorField
+            label="Page background"
+            value={background}
+            onChange={(color) => updatePageBackground({ type: "solid", color })}
+          />
+        </InspectorSection>
+        <div className="p-5 text-center">
+          <p className="text-xs leading-5 text-zinc-400">
+            Select an element on the canvas or in the layers panel to edit it.
+          </p>
         </div>
-        <p className="mt-4 text-sm font-bold">Nothing selected</p>
-        <p className="mt-1 text-xs leading-5 text-zinc-400">
-          Select an element on the canvas or in the layers panel to edit it.
-        </p>
       </div>
     );
   }

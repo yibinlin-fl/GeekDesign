@@ -17,6 +17,8 @@ import {
   validateDesignDocument,
   type DesignDocument,
   type Node,
+  type Page,
+  type Paint,
   type TextNode,
 } from "@geekdesign/design-schema";
 import { SceneGraph } from "@geekdesign/scene-graph";
@@ -42,9 +44,11 @@ const createBlankDocument = (): DesignDocument =>
 let executor = new CommandExecutor({
   sceneGraph: SceneGraph.fromDocument(createBlankDocument()),
 });
+let activePageId = executor.toDocument().pages[0]!.id;
 
 interface EditorState {
   document: DesignDocument;
+  currentPageId: string;
   selectedNodeId?: string;
   hoveredNodeId?: string;
   canUndo: boolean;
@@ -52,6 +56,11 @@ interface EditorState {
   saved: boolean;
   zoom: number;
   newDesign: () => void;
+  selectPage: (pageId: string) => void;
+  addPage: () => void;
+  duplicatePage: (pageId?: string) => void;
+  deletePage: (pageId?: string) => void;
+  updatePageBackground: (paint: Paint) => void;
   addText: () => void;
   addRect: () => void;
   addEllipse: () => void;
@@ -91,12 +100,19 @@ const commandContext = () => ({
   userId: USER_ID,
 });
 
-const snapshot = () => ({
-  document: executor.toDocument(),
-  canUndo: executor.canUndo(),
-  canRedo: executor.canRedo(),
-  saved: false,
-});
+const snapshot = () => {
+  const document = executor.toDocument();
+  if (!document.pages.some((page) => page.id === activePageId)) {
+    activePageId = document.pages[0]!.id;
+  }
+  return {
+    document,
+    currentPageId: activePageId,
+    canUndo: executor.canUndo(),
+    canRedo: executor.canRedo(),
+    saved: false,
+  };
+};
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   ...snapshot(),
@@ -105,11 +121,93 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     executor = new CommandExecutor({
       sceneGraph: SceneGraph.fromDocument(createBlankDocument()),
     });
+    activePageId = executor.toDocument().pages[0]!.id;
     set({ ...snapshot(), selectedNodeId: undefined, hoveredNodeId: undefined });
+  },
+  selectPage: (pageId) => {
+    if (!executor.toDocument().pages.some((page) => page.id === pageId)) return;
+    activePageId = pageId;
+    set({
+      currentPageId: pageId,
+      selectedNodeId: undefined,
+      hoveredNodeId: undefined,
+    });
+  },
+  addPage: () => {
+    const document = executor.toDocument();
+    const page: Page = {
+      id: id("page"),
+      name: `Page ${document.pages.length + 1}`,
+      background: { type: "solid", color: "#ffffff" },
+      children: [],
+    };
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "ADD_PAGE",
+        payload: { page },
+      }),
+    );
+    activePageId = page.id;
+    set({ ...snapshot(), selectedNodeId: undefined, hoveredNodeId: undefined });
+  },
+  duplicatePage: (pageId = activePageId) => {
+    const document = executor.toDocument();
+    const source = document.pages.find((page) => page.id === pageId);
+    if (!source) return;
+    const sourceIndex = document.pages.findIndex((page) => page.id === pageId);
+    const page: Page = {
+      id: id("page"),
+      name: `${source.name} copy`,
+      background: structuredClone(source.background),
+      children: [],
+    };
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "ADD_PAGE",
+        payload: { page, index: sourceIndex + 1 },
+      }),
+    );
+    source.children.forEach((nodeId) =>
+      duplicateNodeTree(document, nodeId, page.id),
+    );
+    activePageId = page.id;
+    set({ ...snapshot(), selectedNodeId: undefined, hoveredNodeId: undefined });
+  },
+  deletePage: (pageId = activePageId) => {
+    const document = executor.toDocument();
+    if (document.pages.length <= 1) return;
+    const pageIndex = document.pages.findIndex((page) => page.id === pageId);
+    if (pageIndex < 0) return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "DELETE_PAGE",
+        payload: { pageId },
+      }),
+    );
+    const pages = executor.toDocument().pages;
+    activePageId = pages[Math.min(pageIndex, pages.length - 1)]!.id;
+    set({ ...snapshot(), selectedNodeId: undefined, hoveredNodeId: undefined });
+  },
+  updatePageBackground: (background) => {
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "SET_BACKGROUND",
+        payload: { pageId: activePageId, background },
+      }),
+    );
+    set(snapshot());
   },
   addText: () => {
     const document = executor.toDocument();
-    const pageId = document.pages[0]!.id;
+    const pageId = currentPage(document).id;
     const node = createTextNode({
       id: id("text"),
       parentId: pageId,
@@ -130,7 +228,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   addRect: () => {
     const document = executor.toDocument();
-    const pageId = document.pages[0]!.id;
+    const pageId = currentPage(document).id;
     const node = createRectNode({
       id: id("rect"),
       parentId: pageId,
@@ -151,7 +249,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   addEllipse: () => {
     const document = executor.toDocument();
-    const pageId = document.pages[0]!.id;
+    const pageId = currentPage(document).id;
     const node = createEllipseNode({
       id: id("ellipse"),
       parentId: pageId,
@@ -164,7 +262,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   addLine: () => {
     const document = executor.toDocument();
-    const pageId = document.pages[0]!.id;
+    const pageId = currentPage(document).id;
     const node = createLineNode({
       id: id("line"),
       parentId: pageId,
@@ -184,7 +282,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   addFrame: () => {
     const document = executor.toDocument();
-    const pageId = document.pages[0]!.id;
+    const pageId = currentPage(document).id;
     const node = createFrameNode({
       id: id("frame"),
       parentId: pageId,
@@ -199,7 +297,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   addImagePlaceholder: () => {
     const document = executor.toDocument();
-    const pageId = document.pages[0]!.id;
+    const pageId = currentPage(document).id;
     const node = createRectNode({
       id: id("image"),
       parentId: pageId,
@@ -260,7 +358,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return;
     }
 
-    const pageId = document.pages[0]!.id;
+    const pageId = currentPage(document).id;
     const node = createImageNode({
       id: id("image"),
       parentId: pageId,
@@ -504,11 +602,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ zoom: Math.min(2, Math.max(0.25, Math.round(zoom * 100) / 100)) }),
   undo: () => {
     executor.undo();
-    set(snapshot());
+    const next = snapshot();
+    const selectedNodeId = get().selectedNodeId;
+    set({
+      ...next,
+      selectedNodeId:
+        selectedNodeId && next.document.nodes[selectedNodeId]
+          ? selectedNodeId
+          : undefined,
+      hoveredNodeId: undefined,
+    });
   },
   redo: () => {
     executor.redo();
-    set(snapshot());
+    const next = snapshot();
+    const selectedNodeId = get().selectedNodeId;
+    set({
+      ...next,
+      selectedNodeId:
+        selectedNodeId && next.document.nodes[selectedNodeId]
+          ? selectedNodeId
+          : undefined,
+      hoveredNodeId: undefined,
+    });
   },
   save: () => {
     window.localStorage.setItem(
@@ -524,6 +640,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     executor = new CommandExecutor({
       sceneGraph: SceneGraph.fromDocument(document),
     });
+    activePageId = document.pages[0]!.id;
     set({
       ...snapshot(),
       saved: true,
@@ -536,6 +653,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     executor = new CommandExecutor({
       sceneGraph: SceneGraph.fromDocument(validated),
     });
+    activePageId = validated.pages[0]!.id;
     set({
       ...snapshot(),
       saved: true,
@@ -555,6 +673,35 @@ function executeCreateNode(parentId: string, node: Node, index?: number): void {
       payload: { parentId, node, ...(index === undefined ? {} : { index }) },
     }),
   );
+}
+
+function currentPage(document: DesignDocument): Page {
+  return (
+    document.pages.find((page) => page.id === activePageId) ??
+    document.pages[0]!
+  );
+}
+
+function duplicateNodeTree(
+  sourceDocument: DesignDocument,
+  sourceNodeId: string,
+  parentId: string,
+): void {
+  const source = sourceDocument.nodes[sourceNodeId];
+  if (!source) return;
+  const duplicate = structuredClone(source);
+  duplicate.id = id(source.type);
+  duplicate.parentId = parentId;
+  if (duplicate.type === "group" || duplicate.type === "frame") {
+    const children = [...duplicate.children];
+    duplicate.children = [];
+    executeCreateNode(parentId, duplicate);
+    children.forEach((childId) =>
+      duplicateNodeTree(sourceDocument, childId, duplicate.id),
+    );
+    return;
+  }
+  executeCreateNode(parentId, duplicate);
 }
 
 export const getSelectedNode = (
