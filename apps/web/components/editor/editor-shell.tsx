@@ -9,13 +9,10 @@ import { apiFetch, getAccessToken } from "../../lib/auth";
 import { getSelectedNode, useEditorStore } from "../../lib/editor-store";
 import { Icon, type IconName } from "../ui/icon";
 import { AssetPanel } from "./asset-panel";
-import { CanvasStage } from "./canvas-stage";
+import { CanvasWorkspace } from "./canvas-workspace";
 import { ExportControls } from "./export-controls";
 
 type ToolPanel = "design" | "elements" | "text" | "uploads" | "layers" | "ai";
-
-const smallButton =
-  "grid size-9 place-items-center rounded-xl text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-30";
 
 export function EditorShell() {
   const store = useEditorStore();
@@ -227,42 +224,8 @@ export function EditorShell() {
           <PanelContent panel={activePanel} onPanelChange={setActivePanel} />
         </aside>
 
-        <section className="relative min-w-0 overflow-auto bg-[#ececf0]">
-          <div className="sticky left-0 top-0 z-10 flex h-11 min-w-full items-center justify-center border-b border-zinc-300/70 bg-[#f7f7f9]/90 px-3 backdrop-blur">
-            <div className="flex items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
-              <button
-                className={smallButton}
-                aria-label="Select tool"
-                title="Select tool"
-              >
-                <span className="text-sm">↖</span>
-              </button>
-              <span className="h-5 w-px bg-zinc-200" />
-              <button
-                className={smallButton}
-                onClick={store.addRect}
-                aria-label="Quick rectangle tool"
-                title="Quick rectangle tool"
-              >
-                <span className="size-3.5 rounded-sm border-2 border-current" />
-              </button>
-              <button
-                className={smallButton}
-                onClick={store.addText}
-                aria-label="Quick text tool"
-                title="Quick text tool"
-              >
-                <Icon className="size-4" name="text" />
-              </button>
-              <span className="h-5 w-px bg-zinc-200" />
-              <span className="px-2 text-[11px] font-bold text-zinc-500">
-                Page 1
-              </span>
-            </div>
-          </div>
-          <div className="canvas-grid grid min-h-[calc(100%-44px)] min-w-max place-items-center p-16">
-            <CanvasStage />
-          </div>
+        <section className="relative min-w-0 overflow-hidden bg-[#ececf0]">
+          <CanvasWorkspace />
           {aiOpen ? <AiPanel onClose={() => setAiOpen(false)} /> : null}
         </section>
 
@@ -287,7 +250,7 @@ export function EditorShell() {
         <span className="ml-4">
           {Object.keys(store.document.nodes).length} elements
         </span>
-        <span className="ml-auto">100%</span>
+        <span className="ml-auto">{Math.round(store.zoom * 100)}%</span>
         <span className="mx-3 h-3 w-px bg-zinc-300" />
         <span>Canvas 2D renderer</span>
       </footer>
@@ -463,6 +426,11 @@ function Inspector({ node }: { node?: Node }) {
   const updateText = useEditorStore((state) => state.updateText);
   const updateFontSize = useEditorStore((state) => state.updateFontSize);
   const updateFillColor = useEditorStore((state) => state.updateFillColor);
+  const updateSelectedTransform = useEditorStore(
+    (state) => state.updateSelectedTransform,
+  );
+  const duplicateSelected = useEditorStore((state) => state.duplicateSelected);
+  const deleteSelected = useEditorStore((state) => state.deleteSelected);
 
   if (!node) {
     return (
@@ -544,26 +512,87 @@ function Inspector({ node }: { node?: Node }) {
         </label>
       </InspectorSection>
       <InspectorSection title="Position & size">
-        <dl className="grid grid-cols-2 gap-2 text-[10px] font-bold text-zinc-400">
-          {[
-            ["X", node.transform.x],
-            ["Y", node.transform.y],
-            ["W", node.transform.width],
-            ["H", node.transform.height],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2"
-            >
-              <dt>{label}</dt>
-              <dd className="mt-1 text-sm text-zinc-700">
-                {Math.round(Number(value))}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        <div className="grid grid-cols-2 gap-2">
+          <TransformField
+            label="X"
+            value={node.transform.x}
+            onChange={(x) => updateSelectedTransform({ x })}
+          />
+          <TransformField
+            label="Y"
+            value={node.transform.y}
+            onChange={(y) => updateSelectedTransform({ y })}
+          />
+          <TransformField
+            label="W"
+            value={node.transform.width}
+            min={12}
+            onChange={(width) => updateSelectedTransform({ width })}
+          />
+          <TransformField
+            label="H"
+            value={node.transform.height}
+            min={12}
+            onChange={(height) => updateSelectedTransform({ height })}
+          />
+        </div>
+        <div className="mt-2">
+          <TransformField
+            label="Rotation"
+            value={node.transform.rotation}
+            onChange={(rotation) => updateSelectedTransform({ rotation })}
+          />
+        </div>
+      </InspectorSection>
+      <InspectorSection title="Actions">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            className="rounded-xl border border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-600 hover:bg-zinc-50"
+            onClick={duplicateSelected}
+          >
+            Duplicate
+          </button>
+          <button
+            className="rounded-xl border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50"
+            onClick={deleteSelected}
+          >
+            Delete
+          </button>
+        </div>
       </InspectorSection>
     </div>
+  );
+}
+
+function TransformField({
+  label,
+  value,
+  min,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min?: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-[10px] font-bold text-zinc-400 focus-within:border-violet-300 focus-within:bg-white">
+      {label}
+      <input
+        className="mt-1 w-full bg-transparent text-sm font-bold text-zinc-700 outline-none"
+        type="number"
+        min={min}
+        value={Math.round(value)}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          if (Number.isFinite(next) && (min === undefined || next >= min))
+            onChange(next);
+        }}
+        aria-label={
+          label === "Rotation" ? "Rotation" : `${label} position or size`
+        }
+      />
+    </label>
   );
 }
 

@@ -43,6 +43,14 @@ published to Zustand, persisted, or added to command history.
 Selection and hover outlines are DOM overlays above the canvas. They are view
 state only and are not exported or persisted.
 
+The workspace automatically fits the page into the available editor area and
+supports zoom controls, Ctrl/Cmd + wheel zoom, and Space + drag panning.
+Selection handles provide resize and rotation previews. The final transform is
+committed as one command when the pointer is released.
+
+Keyboard actions include Delete/Backspace, arrow-key movement, Shift + arrow
+movement, Ctrl/Cmd + D duplication, and Ctrl/Cmd + Z history navigation.
+
 ## Persistence and Export
 
 The MVP saves one validated document to browser `localStorage` and loads it
@@ -55,7 +63,8 @@ export service can reuse Renderer Core for high-resolution server-side output.
 ## Current Scope
 
 The MVP supports blank designs, text, rectangles, image placeholders, layer
-selection, drag movement, text editing, font size, solid fill colors,
+selection, drag movement, resize, rotation, keyboard movement, duplication,
+deletion, precise transform fields, text editing, font size, solid fill colors,
 undo/redo, local save/load, and PNG export. The AI Assistant panel is a visual
 placeholder; future AI actions must dispatch the same normal commands.
 

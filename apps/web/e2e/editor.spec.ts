@@ -43,10 +43,13 @@ test("drags an element with one undoable command", async ({ page }) => {
   const canvas = page.getByLabel("Design canvas");
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Design canvas is not visible");
+  const scale = box.width / 800;
 
-  await page.mouse.move(box.x + 290, box.y + 250);
+  await page.mouse.move(box.x + 290 * scale, box.y + 250 * scale);
   await page.mouse.down();
-  await page.mouse.move(box.x + 370, box.y + 290, { steps: 8 });
+  await page.mouse.move(box.x + 370 * scale, box.y + 290 * scale, {
+    steps: 8,
+  });
   await page.mouse.up();
 
   const selection = page.getByTestId("selection-box");
@@ -56,4 +59,59 @@ test("drags an element with one undoable command", async ({ page }) => {
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(selection).toHaveAttribute("data-x", "180");
   await expect(selection).toHaveAttribute("data-y", "180");
+});
+
+test("resizes, rotates, nudges, duplicates, and deletes a selection", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Add rectangle" }).click();
+  const selection = page.getByTestId("selection-box");
+
+  const resizeHandle = page.getByRole("button", { name: "Resize se" });
+  const resizeBox = await resizeHandle.boundingBox();
+  if (!resizeBox) throw new Error("Resize handle is not visible");
+  await page.mouse.move(
+    resizeBox.x + resizeBox.width / 2,
+    resizeBox.y + resizeBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(resizeBox.x + 60, resizeBox.y + 40, { steps: 6 });
+  await page.mouse.up();
+  await expect(selection).not.toHaveAttribute("data-width", "220");
+
+  const rotationHandle = page.getByRole("button", { name: "Rotate selection" });
+  const rotationBox = await rotationHandle.boundingBox();
+  const selectionBox = await selection.boundingBox();
+  if (!rotationBox || !selectionBox)
+    throw new Error("Rotation controls are not visible");
+  await page.mouse.move(
+    rotationBox.x + rotationBox.width / 2,
+    rotationBox.y + rotationBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    selectionBox.x + selectionBox.width + 30,
+    selectionBox.y + selectionBox.height / 2,
+    { steps: 8 },
+  );
+  await page.mouse.up();
+  await expect(selection).not.toHaveAttribute("data-rotation", "0");
+
+  await page.getByLabel("Rotation").fill("30");
+  await expect(selection).toHaveAttribute("data-rotation", "30");
+
+  await page.getByLabel("Rotation").press("Tab");
+  await page.keyboard.press("ArrowRight");
+  await expect(selection).toHaveAttribute("data-x", "181");
+  await page.keyboard.press("Control+d");
+  await expect(page.getByTestId("layers-list")).toContainText("Rectangle copy");
+  await page.keyboard.press("Delete");
+  await expect(page.getByTestId("layers-list")).not.toContainText(
+    "Rectangle copy",
+  );
+
+  const fitButton = page.getByRole("button", { name: "Fit canvas" });
+  const zoomBefore = await fitButton.textContent();
+  await page.getByRole("button", { name: "Zoom in" }).click();
+  await expect(fitButton).not.toHaveText(zoomBefore ?? "");
 });

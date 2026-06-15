@@ -45,6 +45,42 @@ describe("asset insertion", () => {
   });
 });
 
+describe("editor transforms", () => {
+  it("updates, duplicates, and deletes selected nodes through commands", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addRect();
+
+    useEditorStore
+      .getState()
+      .updateSelectedTransform({ x: 42, width: 360, rotation: 15 });
+    let state = useEditorStore.getState();
+    const selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.transform).toMatchObject({
+      x: 42,
+      width: 360,
+      rotation: 15,
+    });
+
+    state.duplicateSelected();
+    state = useEditorStore.getState();
+    expect(Object.keys(state.document.nodes)).toHaveLength(2);
+    expect(state.canUndo).toBe(true);
+
+    state.deleteSelected();
+    state = useEditorStore.getState();
+    expect(Object.keys(state.document.nodes)).toHaveLength(1);
+    expect(state.selectedNodeId).toBeUndefined();
+
+    state.undo();
+    expect(Object.keys(useEditorStore.getState().document.nodes)).toHaveLength(
+      2,
+    );
+  });
+});
+
 const assetItem = (id: string, filename: string) => ({
   id,
   filename,

@@ -46,6 +46,7 @@ interface EditorState {
   canUndo: boolean;
   canRedo: boolean;
   saved: boolean;
+  zoom: number;
   newDesign: () => void;
   addText: () => void;
   addRect: () => void;
@@ -57,6 +58,10 @@ interface EditorState {
   updateFontSize: (fontSize: number) => void;
   updateFillColor: (color: string) => void;
   moveSelected: (x: number, y: number) => void;
+  updateSelectedTransform: (transform: Partial<Node["transform"]>) => void;
+  deleteSelected: () => void;
+  duplicateSelected: () => void;
+  setZoom: (zoom: number) => void;
   undo: () => void;
   redo: () => void;
   save: () => void;
@@ -79,6 +84,7 @@ const snapshot = () => ({
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   ...snapshot(),
+  zoom: 1,
   newDesign: () => {
     executor = new CommandExecutor({
       sceneGraph: SceneGraph.fromDocument(createBlankDocument()),
@@ -260,6 +266,60 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     );
     set(snapshot());
   },
+  updateSelectedTransform: (transform) => {
+    const nodeId = get().selectedNodeId;
+    if (!nodeId) return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_NODE",
+        payload: { nodeId, patch: { transform } },
+      }),
+    );
+    set(snapshot());
+  },
+  deleteSelected: () => {
+    const nodeId = get().selectedNodeId;
+    if (!nodeId) return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "DELETE_NODE",
+        payload: { nodeId },
+      }),
+    );
+    set({
+      ...snapshot(),
+      selectedNodeId: undefined,
+      hoveredNodeId: undefined,
+    });
+  },
+  duplicateSelected: () => {
+    const nodeId = get().selectedNodeId;
+    if (!nodeId) return;
+    const document = executor.toDocument();
+    const node = document.nodes[nodeId];
+    if (!node) return;
+    const duplicate = structuredClone(node);
+    duplicate.id = id(node.type);
+    duplicate.name = `${node.name ?? node.type} copy`;
+    duplicate.transform.x += 20;
+    duplicate.transform.y += 20;
+    if (duplicate.type === "group" || duplicate.type === "frame") return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "CREATE_NODE",
+        payload: { parentId: duplicate.parentId, node: duplicate },
+      }),
+    );
+    set({ ...snapshot(), selectedNodeId: duplicate.id });
+  },
+  setZoom: (zoom) =>
+    set({ zoom: Math.min(2, Math.max(0.25, Math.round(zoom * 100) / 100)) }),
   undo: () => {
     executor.undo();
     set(snapshot());
