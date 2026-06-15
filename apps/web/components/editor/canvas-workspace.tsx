@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { localAssetFromFile } from "../../lib/assets";
 import { useEditorStore } from "../../lib/editor-store";
 import { CanvasStage } from "./canvas-stage";
+import { TextToolbar } from "./text-toolbar";
 
 export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -126,7 +127,8 @@ export function CanvasWorkspace({ children }: { children?: React.ReactNode }) {
 
   return (
     <section className="relative h-full min-w-0 overflow-hidden bg-[#ececf0]">
-      <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
+      <TextToolbar />
+      <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
         <ZoomButton label="Zoom out" onClick={() => setZoom(zoom - 0.1)}>
           -
         </ZoomButton>

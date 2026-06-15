@@ -463,6 +463,7 @@ function ShapeButton({
 function Inspector({ node }: { node?: Node }) {
   const updateText = useEditorStore((state) => state.updateText);
   const updateFontSize = useEditorStore((state) => state.updateFontSize);
+  const updateTextStyle = useEditorStore((state) => state.updateTextStyle);
   const updateFillColor = useEditorStore((state) => state.updateFillColor);
   const updateStroke = useEditorStore((state) => state.updateStroke);
   const updateOpacity = useEditorStore((state) => state.updateOpacity);
@@ -546,6 +547,62 @@ function Inspector({ node }: { node?: Node }) {
               aria-label="Font size"
             />
           </label>
+          <label className="mt-3 block text-[11px] font-bold text-zinc-500">
+            Font family
+            <select
+              className="mt-2 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700 outline-none"
+              value={node.text.fontFamily}
+              onChange={(event) =>
+                updateTextStyle({ fontFamily: event.target.value })
+              }
+              aria-label="Font family"
+            >
+              {[
+                "Arial",
+                "Inter",
+                "Georgia",
+                "Times New Roman",
+                "Courier New",
+              ].map((font) => (
+                <option key={font} value={font}>
+                  {font}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <TransformField
+              label="Line height"
+              value={node.text.lineHeight}
+              min={0.5}
+              step={0.1}
+              onChange={(lineHeight) => updateTextStyle({ lineHeight })}
+            />
+            <TransformField
+              label="Letter spacing"
+              value={node.text.letterSpacing}
+              step={0.5}
+              onChange={(letterSpacing) => updateTextStyle({ letterSpacing })}
+            />
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-1">
+            {(["left", "center", "right", "justify"] as const).map(
+              (textAlign) => (
+                <button
+                  key={textAlign}
+                  className={`rounded-lg border px-1 py-2 text-[10px] font-bold ${
+                    node.text.textAlign === textAlign
+                      ? "border-violet-300 bg-violet-50 text-violet-700"
+                      : "border-zinc-200 text-zinc-500"
+                  }`}
+                  onClick={() => updateTextStyle({ textAlign })}
+                  aria-label={`Inspector align ${textAlign}`}
+                >
+                  {textAlign}
+                </button>
+              ),
+            )}
+          </div>
         </InspectorSection>
       ) : null}
       <InspectorSection title="Appearance">
@@ -738,11 +795,13 @@ function TransformField({
   label,
   value,
   min,
+  step,
   onChange,
 }: {
   label: string;
   value: number;
   min?: number;
+  step?: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -752,7 +811,8 @@ function TransformField({
         className="mt-1 w-full bg-transparent text-sm font-bold text-zinc-700 outline-none"
         type="number"
         min={min}
-        value={Math.round(value)}
+        step={step}
+        value={step ? Number(value.toFixed(2)) : Math.round(value)}
         onChange={(event) => {
           const next = Number(event.target.value);
           if (Number.isFinite(next) && (min === undefined || next >= min))

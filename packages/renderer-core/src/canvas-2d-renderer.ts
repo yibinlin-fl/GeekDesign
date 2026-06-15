@@ -132,6 +132,9 @@ export class Canvas2DRenderer implements Renderer {
     }
 
     context.font = `${node.text.fontWeight} ${node.text.fontSize}px "${node.text.fontFamily}"`;
+    (
+      context as CanvasRenderingContext2D & { letterSpacing: string }
+    ).letterSpacing = `${node.text.letterSpacing}px`;
     context.textAlign =
       node.text.textAlign === "justify" ? "left" : node.text.textAlign;
     context.textBaseline = "top";

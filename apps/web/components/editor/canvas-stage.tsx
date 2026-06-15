@@ -2,7 +2,7 @@
 
 import { Canvas2DRenderer } from "@geekdesign/renderer-core";
 import { SceneGraph } from "@geekdesign/scene-graph";
-import type { Node, Transform } from "@geekdesign/design-schema";
+import type { Node, TextNode, Transform } from "@geekdesign/design-schema";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BrowserImageCache } from "../../lib/browser-image-cache";
@@ -44,6 +44,11 @@ export function CanvasStage() {
   const interactionRef = useRef<Interaction>();
   const previewRef = useRef<Transform>();
   const [preview, setPreview] = useState<Transform>();
+  const [editing, setEditing] = useState<{
+    nodeId: string;
+    initial: string;
+    draft: string;
+  }>();
   const [assetVersion, setAssetVersion] = useState(0);
   const imageCache = useMemo(
     () =>
@@ -66,12 +71,20 @@ export function CanvasStage() {
   const updateSelectedTransform = useEditorStore(
     (state) => state.updateSelectedTransform,
   );
+  const updateTextNode = useEditorStore((state) => state.updateTextNode);
 
   useEffect(() => {
     if (canvasRef.current && !interactionRef.current) {
-      renderer.renderDocument(document, canvasRef.current);
+      if (editing) {
+        const previewDocument = structuredClone(document);
+        const node = previewDocument.nodes[editing.nodeId];
+        if (node?.type === "text") node.text.content = "";
+        renderer.renderDocument(previewDocument, canvasRef.current);
+      } else {
+        renderer.renderDocument(document, canvasRef.current);
+      }
     }
-  }, [assetVersion, document, renderer]);
+  }, [assetVersion, document, editing, renderer]);
 
   useEffect(
     () => () => {
@@ -99,6 +112,7 @@ export function CanvasStage() {
     const point = pointFromClient(event.clientX, event.clientY);
     const node = hitNode(point);
     selectNode(node?.id);
+    if (editing) return;
     if (!node) return;
     interactionRef.current = {
       type: "move",
@@ -109,6 +123,26 @@ export function CanvasStage() {
     previewRef.current = structuredClone(node.transform);
     setPreview(previewRef.current);
     event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const onCanvasDoubleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const point = pointFromClient(event.clientX, event.clientY);
+    const node = hitNode(point);
+    if (node?.type !== "text" || node.style.locked) return;
+    selectNode(node.id);
+    setEditing({
+      nodeId: node.id,
+      initial: node.text.content,
+      draft: node.text.content,
+    });
+  };
+
+  const finishTextEditing = (commit: boolean) => {
+    if (!editing) return;
+    const next = editing.draft;
+    const initial = editing.initial;
+    setEditing(undefined);
+    if (commit && next !== initial) updateTextNode(editing.nodeId, next);
   };
 
   const startResize = (
@@ -251,12 +285,13 @@ export function CanvasStage() {
         className="block cursor-default"
         aria-label="Design canvas"
         onPointerDown={onCanvasPointerDown}
+        onDoubleClick={onCanvasDoubleClick}
         onPointerLeave={() => {
           if (!interactionRef.current) hoverNode(undefined);
         }}
       />
       {hovered ? <NodeOutline node={hovered} color="#a78bfa" /> : null}
-      {displayedSelected ? (
+      {displayedSelected && !editing ? (
         <NodeOutline
           node={displayedSelected}
           color="#7c3aed"
@@ -265,7 +300,77 @@ export function CanvasStage() {
           onRotate={startRotate}
         />
       ) : null}
+      {editing ? (
+        <InlineTextEditor
+          node={document.nodes[editing.nodeId] as TextNode}
+          value={editing.draft}
+          onChange={(draft) =>
+            setEditing((current) => (current ? { ...current, draft } : current))
+          }
+          onCommit={() => finishTextEditing(true)}
+          onCancel={() => finishTextEditing(false)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function InlineTextEditor({
+  node,
+  value,
+  onChange,
+  onCommit,
+  onCancel,
+}: {
+  node: TextNode;
+  value: string;
+  onChange: (value: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  const color =
+    node.style.fill?.type === "solid" ? node.style.fill.color : "#18181b";
+  return (
+    <textarea
+      ref={ref}
+      className="absolute z-20 resize-none overflow-hidden border-2 border-violet-500 bg-white/90 p-0 outline-none"
+      style={{
+        left: node.transform.x,
+        top: node.transform.y,
+        width: node.transform.width,
+        height: node.transform.height,
+        transform: `rotate(${node.transform.rotation}deg)`,
+        transformOrigin: "top left",
+        color,
+        fontFamily: node.text.fontFamily,
+        fontSize: node.text.fontSize,
+        fontWeight: node.text.fontWeight,
+        lineHeight: node.text.lineHeight,
+        letterSpacing: node.text.letterSpacing,
+        textAlign:
+          node.text.textAlign === "justify" ? "left" : node.text.textAlign,
+      }}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={onCommit}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onCancel();
+        }
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          onCommit();
+        }
+      }}
+      aria-label="Inline text editor"
+      data-testid="inline-text-editor"
+    />
   );
 }
 

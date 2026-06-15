@@ -128,3 +128,37 @@ test("adds shapes and edits their appearance", async ({ page }) => {
   await page.getByRole("button", { name: "Add frame" }).click();
   await expect(page.getByTestId("layers-list")).toContainText("Frame");
 });
+
+test("edits text directly on canvas and changes typography", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Add text" }).click();
+  const canvas = page.getByLabel("Design canvas");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Design canvas is not visible");
+  const scale = box.width / 800;
+
+  await page.mouse.dblclick(box.x + 180 * scale, box.y + 125 * scale);
+  const inlineEditor = page.getByTestId("inline-text-editor");
+  await expect(inlineEditor).toBeVisible();
+  await inlineEditor.press("Control+a");
+  await inlineEditor.pressSequentially("Edited directly");
+  await inlineEditor.press("Control+Enter");
+  await expect(page.getByTestId("layers-list")).toContainText(
+    "Edited directly",
+  );
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByTestId("layers-list")).toContainText("New text");
+  await page.getByRole("button", { name: "Redo" }).click();
+
+  await page.getByLabel("Toolbar font family").selectOption("Georgia");
+  await page.getByRole("button", { name: "Bold" }).click();
+  await page.getByRole("button", { name: "Align center", exact: true }).click();
+  await page.getByLabel("Line height position or size").fill("1.5");
+  await page.getByLabel("Letter spacing position or size").fill("2");
+  await expect(page.getByRole("button", { name: "Bold" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});

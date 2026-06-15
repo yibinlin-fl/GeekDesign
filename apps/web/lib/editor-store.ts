@@ -17,6 +17,7 @@ import {
   validateDesignDocument,
   type DesignDocument,
   type Node,
+  type TextNode,
 } from "@geekdesign/design-schema";
 import { SceneGraph } from "@geekdesign/scene-graph";
 import { create } from "zustand";
@@ -61,6 +62,8 @@ interface EditorState {
   selectNode: (nodeId?: string) => void;
   hoverNode: (nodeId?: string) => void;
   updateText: (content: string) => void;
+  updateTextNode: (nodeId: string, content: string) => void;
+  updateTextStyle: (text: Partial<TextNode["text"]>) => void;
   updateFontSize: (fontSize: number) => void;
   updateFillColor: (color: string) => void;
   updateStroke: (color: string, width: number) => void;
@@ -287,7 +290,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   updateText: (content) => {
     const nodeId = get().selectedNodeId;
     if (!nodeId) return;
+    get().updateTextNode(nodeId, content);
+  },
+  updateTextNode: (nodeId, content) => {
     executor.execute(updateTextCommand(commandContext(), { nodeId, content }));
+    set(snapshot());
+  },
+  updateTextStyle: (text) => {
+    const nodeId = get().selectedNodeId;
+    const node = nodeId ? executor.toDocument().nodes[nodeId] : undefined;
+    if (!nodeId || node?.type !== "text") return;
+    executor.execute(
+      createCommand({
+        ...commandContext(),
+        source: "user",
+        type: "UPDATE_NODE",
+        payload: { nodeId, patch: { text } },
+      }),
+    );
     set(snapshot());
   },
   updateFontSize: (fontSize) => {

@@ -129,6 +129,42 @@ describe("element library", () => {
   });
 });
 
+describe("typography", () => {
+  it("updates text typography through one controlled command", () => {
+    const store = useEditorStore.getState();
+    store.newDesign();
+    store.addText();
+    useEditorStore.getState().updateTextStyle({
+      fontFamily: "Georgia",
+      fontWeight: 700,
+      textAlign: "center",
+      lineHeight: 1.5,
+      letterSpacing: 2,
+    });
+
+    const state = useEditorStore.getState();
+    const selected = state.selectedNodeId
+      ? state.document.nodes[state.selectedNodeId]
+      : undefined;
+    expect(selected?.type === "text" && selected.text).toMatchObject({
+      fontFamily: "Georgia",
+      fontWeight: 700,
+      textAlign: "center",
+      lineHeight: 1.5,
+      letterSpacing: 2,
+    });
+
+    state.undo();
+    const undone = useEditorStore.getState();
+    const undoneNode = undone.selectedNodeId
+      ? undone.document.nodes[undone.selectedNodeId]
+      : undefined;
+    expect(undoneNode?.type === "text" && undoneNode.text.fontFamily).toBe(
+      "Arial",
+    );
+  });
+});
+
 const assetItem = (id: string, filename: string) => ({
   id,
   filename,

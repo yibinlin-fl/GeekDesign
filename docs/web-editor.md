@@ -51,6 +51,13 @@ committed as one command when the pointer is released.
 Keyboard actions include Delete/Backspace, arrow-key movement, Shift + arrow
 movement, Ctrl/Cmd + D duplication, and Ctrl/Cmd + Z history navigation.
 
+Double-clicking a text node opens an inline editor positioned over the canvas
+node. Keystrokes remain local draft state while editing; blur or Ctrl/Cmd +
+Enter commits one `UPDATE_TEXT` command, while Escape cancels the draft. Text
+selection also exposes a contextual toolbar for font family, size, weight,
+alignment, and color. Line height and letter spacing are available in the
+Inspector.
+
 ## Persistence and Export
 
 The MVP saves one validated document to browser `localStorage` and loads it
